@@ -1,11 +1,7 @@
 package org.wordpress.android;
 
-import com.commonsware.cwac.cache.SimpleWebImageCache;
-import com.commonsware.cwac.thumbnail.ThumbnailAdapter;
-import com.commonsware.cwac.thumbnail.ThumbnailBus;
-import com.commonsware.cwac.thumbnail.ThumbnailMessage;
-
-import org.wordpress.android.util.EscapeUtils;
+import java.util.HashMap;
+import java.util.Vector;
 
 import android.app.AlertDialog;
 import android.app.ListActivity;
@@ -29,8 +25,10 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.AdapterView.OnItemClickListener;
 
-import java.util.HashMap;
-import java.util.Vector;
+import com.commonsware.cwac.cache.SimpleWebImageCache;
+import com.commonsware.cwac.thumbnail.ThumbnailAdapter;
+import com.commonsware.cwac.thumbnail.ThumbnailBus;
+import com.commonsware.cwac.thumbnail.ThumbnailMessage;
 
 public class AddQuickPressShortcut extends ListActivity {
 	public Vector<?> accounts;
@@ -90,7 +88,7 @@ public class AddQuickPressShortcut extends ListActivity {
 				String[] urlSplit = url.split("/");
 				url = urlSplit[0];
 				url = "http://gravatar.com/blavatar/"
-						+ ViewComments.getMd5Hash(url.trim())
+						+ moderateCommentsTab.getMd5Hash(url.trim())
 						+ "?s=60&d=404";
 				blavatars[validBlogCtr] = url;
 				accountNames.add(validBlogCtr, blogNames[i]);
@@ -120,7 +118,7 @@ public class AddQuickPressShortcut extends ListActivity {
 			
 		} else {
 			// no account, load new account view
-			Intent i = new Intent(AddQuickPressShortcut.this, NewAccount.class);
+			Intent i = new Intent(AddQuickPressShortcut.this, newAccount.class);
 			startActivityForResult(i, 0);
 		}
 	}
@@ -132,7 +130,7 @@ public class AddQuickPressShortcut extends ListActivity {
 		dialogBuilder.setTitle(R.string.quickpress_add_alert_title);
 		
 		final EditText quickPressShortcutName = new EditText(AddQuickPressShortcut.this);
-		quickPressShortcutName.setText("QP " + EscapeUtils.unescapeHtml(accountNames.get(position)));
+		quickPressShortcutName.setText("QP " + escapeUtils.unescapeHtml(accountNames.get(position)));
 		dialogBuilder.setView(quickPressShortcutName);
 		
 		dialogBuilder.setPositiveButton(R.string.add, new DialogInterface.OnClickListener() {
@@ -143,11 +141,11 @@ public class AddQuickPressShortcut extends ListActivity {
 				    t.show();
 				} else {
 					Intent shortcutIntent = new Intent();
-	        		shortcutIntent.setClassName(EditPost.class.getPackage().getName(), EditPost.class.getName());
+	        		shortcutIntent.setClassName(editPost.class.getPackage().getName(), editPost.class.getName());
 	        		shortcutIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 	        		shortcutIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 	        		shortcutIntent.putExtra("id", accountIDs[position]);
-	        		shortcutIntent.putExtra("accountName", EscapeUtils.unescapeHtml(accountNames.get(position)));
+	        		shortcutIntent.putExtra("accountName", escapeUtils.unescapeHtml(accountNames.get(position)));
 	        		shortcutIntent.putExtra("isNew", true);
 	        		
 	        		Intent addIntent = new Intent();
@@ -239,9 +237,9 @@ public class AddQuickPressShortcut extends ListActivity {
 			}
 
 			wrapper.getBlogName().setText(
-					EscapeUtils.unescapeHtml(blogNames[position]));
+					escapeUtils.unescapeHtml(blogNames[position]));
 			wrapper.getBlogUsername().setText(
-					EscapeUtils.unescapeHtml(username));
+					escapeUtils.unescapeHtml(username));
 
 			if (wrapper.getBlavatar() != null) {
 				try {

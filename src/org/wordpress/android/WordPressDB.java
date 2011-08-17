@@ -1,19 +1,6 @@
 package org.wordpress.android;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.wordpress.android.models.Post;
-import org.wordpress.android.util.Base64;
-
-import android.content.ContentValues;
-import android.content.Context;
-import android.content.Intent;
-import android.database.Cursor;
-import android.database.SQLException;
-import android.database.sqlite.SQLiteDatabase;
-
 import java.text.StringCharacterIterator;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Vector;
 
@@ -22,9 +9,17 @@ import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.DESKeySpec;
 
+import android.content.ContentValues;
+import android.content.Context;
+import android.content.Intent;
+import android.database.Cursor;
+import android.database.SQLException;
+import android.database.sqlite.SQLiteDatabase;
+import android.util.Log;
+
 public class WordPressDB {
 
-	private static final int DATABASE_VERSION = 11;
+	private static final int DATABASE_VERSION = 10;
 	
 	private static final String CREATE_TABLE_SETTINGS = "create table if not exists accounts (id integer primary key autoincrement, "
 			+ "url text, blogName text, username text, password text, imagePlacement text, centerThumbnail boolean, fullSizeImage boolean, maxImageWidth text, maxImageWidthId integer, lastCommentId integer, runService boolean);";
@@ -33,15 +28,28 @@ public class WordPressDB {
 	private static final String SETTINGS_TABLE = "accounts";
 	private static final String DATABASE_NAME = "wordpress";
 	
-	private static final String CREATE_TABLE_POSTS = "create table if not exists posts (id integer primary key autoincrement, blogID text, " +
-			"postid text, title text default '', dateCreated date, date_created_gmt date, categories text default '', custom_fields text default '', " +
-			"description text default '', link text default '', mt_allow_comments boolean, mt_allow_pings boolean, " +
-			"mt_excerpt text default '', mt_keywords text default '', mt_text_more text default '', permaLink text default '', post_status text default '', userid integer default 0, " +
-			"wp_author_display_name text default '', wp_author_id text default '', wp_password text default '', wp_post_format text default '', wp_slug text default '', mediaPaths text default '', " +
-			"latitude real, longitude real, localDraft boolean default 0, uploaded boolean default 0, isPage boolean default 0, wp_page_parent_id text, wp_page_parent_title text);";
+	//localDrafts
+	private static final String CREATE_TABLE_LOCALDRAFTS = "create table if not exists localdrafts (id integer primary key autoincrement, blogID text, uploaded boolean, title text,content text, picturePaths text, tags text, categories text, publish boolean);";
+	private static final String CREATE_TABLE_LOCALPAGEDRAFTS = "create table if not exists localpagedrafts (id integer primary key autoincrement, blogID text, uploaded boolean, title text,content text, picturePaths text, publish boolean);";
 
+	private static final String LOCALDRAFTS_TABLE = "localdrafts";
+	private static final String LOCALPAGEDRAFTS_TABLE = "localpagedrafts";
+	
+	private static final String ADD_LATITUDE = "alter table localdrafts add latitude real";
+	private static final String ADD_LONGITUDE = "alter table localdrafts add longitude real";
+	
+	private static final String ADD_STATUS = "alter table localdrafts add status text";
+	private static final String ADD_PAGE_STATUS = "alter table localpagedrafts add status text";
+	
+	private static final String ADD_LOCALDRAFT_DATE = "alter table localdrafts add date integer;";
+	private static final String ADD_LOCALPAGEDRAFT_DATE = "alter table localpagedrafts add date integer;";
+	
+	//postStore
+	private static final String CREATE_TABLE_POSTSTORE = "create table if not exists poststore (blogID text, postID text, title text, postDate text, postDateFormatted text);";
+	private static final String CREATE_TABLE_PAGES = "create table if not exists pages (blogID text, pageID text, parentID text, title text, pageDate text, pageDateFormatted text);";
 	private static final String CREATE_TABLE_COMMENTS = "create table if not exists comments (blogID text, postID text, iCommentID integer, author text, comment text, commentDate text, commentDateFormatted text, status text, url text, email text, postTitle text);";
-	private static final String POSTS_TABLE = "posts";
+	private static final String POSTSTORE_TABLE = "poststore";
+	private static final String PAGES_TABLE = "pages";
 	private static final String COMMENTS_TABLE = "comments";
 	
 	//eula
@@ -91,17 +99,15 @@ public class WordPressDB {
 	private static final String CREATE_TABLE_QUICKPRESS_SHORTCUTS = "create table if not exists quickpress_shortcuts (id integer primary key autoincrement, accountId text, name text);";
 	private static final String QUICKPRESS_SHORTCUTS_TABLE = "quickpress_shortcuts";
 	
-	//add field to store last used blog
-    private static final String ADD_LAST_BLOG_ID = "alter table eula add last_blog_id text;";
-    
-    //add field to store last used blog
-    private static final String ADD_POST_FORMATS = "alter table accounts add postFormats text default '';";
+	//add password column to poststore, localdrafts, pages and localpagedrafts
+	private static final String ADD_PASSWORD_TO_POSTSTORE = "alter table poststore add password text;";
+	private static final String ADD_PASSWORD_TO_LOCALDRAFTS = "alter table localdrafts add password text;";
+	private static final String ADD_PASSWORD_TO_PAGES = "alter table pages add password text;";
+	private static final String ADD_PASSWORD_TO_LOCALPAGEDRAFTS = "alter table localpagedrafts add password text;";
 	
 	private SQLiteDatabase db;
 	
-	protected static final String PASSWORD_SECRET = "nottherealpasscode";
-	
-	public String defaultBlog = "";
+	protected static final String PASSWORD_SECRET = "makemetopsecretforrelease!";
 
 	public WordPressDB(Context ctx) {
 		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
@@ -110,10 +116,16 @@ public class WordPressDB {
 		//added eula to this class to fix trac #49
 		db.execSQL(CREATE_TABLE_EULA);
 		//int test = db.getVersion();
+
+		db.execSQL(CREATE_TABLE_LOCALDRAFTS);
+		db.execSQL(CREATE_TABLE_LOCALPAGEDRAFTS);
 		
-		db.execSQL(CREATE_TABLE_POSTS);
+		db.execSQL(CREATE_TABLE_POSTSTORE);
+		db.execSQL(CREATE_TABLE_PAGES);
 		db.execSQL(CREATE_TABLE_COMMENTS);
+		
 		db.execSQL(CREATE_TABLE_CATEGORIES);
+		
 		db.execSQL(CREATE_TABLE_QUICKPRESS_SHORTCUTS);
 		
 		try {
@@ -124,6 +136,8 @@ public class WordPressDB {
 				db.execSQL(ADD_VIBRATE_OPTION);
 				db.execSQL(ADD_LIGHT_OPTION);
 				db.execSQL(ADD_LOCATION_FLAG);
+				db.execSQL(ADD_LATITUDE);
+				db.execSQL(ADD_LONGITUDE);
 				db.execSQL(ADD_TAGLINE);
 				db.execSQL(ADD_TAGLINE_FLAG);
 				db.execSQL(ADD_DOTCOM_USERNAME);
@@ -133,10 +147,16 @@ public class WordPressDB {
 				db.execSQL(ADD_DOTCOM_FLAG);
 				db.execSQL(ADD_WP_VERSION);
 				db.execSQL(ADD_UNIQUE_ID);
+				db.execSQL(ADD_STATUS);
+				db.execSQL(ADD_PAGE_STATUS);
 				db.execSQL(ADD_HTTPUSER);
 				db.execSQL(ADD_HTTPPASSWORD);
-                db.execSQL(ADD_LAST_BLOG_ID);
-                db.execSQL(ADD_POST_FORMATS);
+				db.execSQL(ADD_PASSWORD_TO_POSTSTORE);
+				db.execSQL(ADD_PASSWORD_TO_LOCALDRAFTS);
+				db.execSQL(ADD_PASSWORD_TO_PAGES);
+				db.execSQL(ADD_PASSWORD_TO_LOCALPAGEDRAFTS);
+				db.execSQL(ADD_LOCALDRAFT_DATE);
+				db.execSQL(ADD_LOCALPAGEDRAFT_DATE);
 				migratePasswords(ctx);
 				db.setVersion(DATABASE_VERSION); //set to latest revision
 			}
@@ -147,6 +167,8 @@ public class WordPressDB {
 				db.execSQL(ADD_VIBRATE_OPTION);
 				db.execSQL(ADD_LIGHT_OPTION);
 				db.execSQL(ADD_LOCATION_FLAG);
+				db.execSQL(ADD_LATITUDE);
+				db.execSQL(ADD_LONGITUDE);
 				db.execSQL(ADD_TAGLINE);
 				db.execSQL(ADD_TAGLINE_FLAG);
 				db.execSQL(ADD_NEW_COMMENT_ID);
@@ -158,10 +180,16 @@ public class WordPressDB {
 				db.execSQL(ADD_DOTCOM_FLAG);
 				db.execSQL(ADD_WP_VERSION);
 				db.execSQL(ADD_UNIQUE_ID);
+				db.execSQL(ADD_STATUS);
+				db.execSQL(ADD_PAGE_STATUS);
 				db.execSQL(ADD_HTTPUSER);
 				db.execSQL(ADD_HTTPPASSWORD);
-                db.execSQL(ADD_LAST_BLOG_ID);
-                db.execSQL(ADD_POST_FORMATS);
+				db.execSQL(ADD_PASSWORD_TO_POSTSTORE);
+				db.execSQL(ADD_PASSWORD_TO_LOCALDRAFTS);
+				db.execSQL(ADD_PASSWORD_TO_PAGES);
+				db.execSQL(ADD_PASSWORD_TO_LOCALPAGEDRAFTS);
+				db.execSQL(ADD_LOCALDRAFT_DATE);
+				db.execSQL(ADD_LOCALPAGEDRAFT_DATE);
 				migratePasswords(ctx);
 				db.setVersion(DATABASE_VERSION); //set to latest revision
 			}
@@ -170,6 +198,8 @@ public class WordPressDB {
 				db.execSQL(ADD_VIBRATE_OPTION);
 				db.execSQL(ADD_LIGHT_OPTION);
 				db.execSQL(ADD_LOCATION_FLAG);
+				db.execSQL(ADD_LATITUDE);
+				db.execSQL(ADD_LONGITUDE);
 				db.execSQL(ADD_TAGLINE);
 				db.execSQL(ADD_TAGLINE_FLAG);
 				db.execSQL(ADD_NEW_COMMENT_ID);
@@ -181,15 +211,23 @@ public class WordPressDB {
 				db.execSQL(ADD_DOTCOM_FLAG);
 				db.execSQL(ADD_WP_VERSION);
 				db.execSQL(ADD_UNIQUE_ID);
+				db.execSQL(ADD_STATUS);
+				db.execSQL(ADD_PAGE_STATUS);
 				db.execSQL(ADD_HTTPUSER);
 				db.execSQL(ADD_HTTPPASSWORD);
-                db.execSQL(ADD_LAST_BLOG_ID);
-                db.execSQL(ADD_POST_FORMATS);
+				db.execSQL(ADD_PASSWORD_TO_POSTSTORE);
+				db.execSQL(ADD_PASSWORD_TO_LOCALDRAFTS);
+				db.execSQL(ADD_PASSWORD_TO_PAGES);
+				db.execSQL(ADD_PASSWORD_TO_LOCALPAGEDRAFTS);
+				db.execSQL(ADD_LOCALDRAFT_DATE);
+				db.execSQL(ADD_LOCALPAGEDRAFT_DATE);
 				migratePasswords(ctx);
 				db.setVersion(DATABASE_VERSION); 
 			}
 			else if (db.getVersion() == 3){
 				db.execSQL(ADD_LOCATION_FLAG);
+				db.execSQL(ADD_LATITUDE);
+				db.execSQL(ADD_LONGITUDE);
 				db.execSQL(ADD_TAGLINE);
 				db.execSQL(ADD_TAGLINE_FLAG);
 				db.execSQL(ADD_NEW_COMMENT_ID);
@@ -201,15 +239,23 @@ public class WordPressDB {
 				db.execSQL(ADD_DOTCOM_FLAG);
 				db.execSQL(ADD_WP_VERSION);
 				db.execSQL(ADD_UNIQUE_ID);
+				db.execSQL(ADD_STATUS);
+				db.execSQL(ADD_PAGE_STATUS);
 				db.execSQL(ADD_HTTPUSER);
 				db.execSQL(ADD_HTTPPASSWORD);
-                db.execSQL(ADD_LAST_BLOG_ID);
-                db.execSQL(ADD_POST_FORMATS);
+				db.execSQL(ADD_PASSWORD_TO_POSTSTORE);
+				db.execSQL(ADD_PASSWORD_TO_LOCALDRAFTS);
+				db.execSQL(ADD_PASSWORD_TO_PAGES);
+				db.execSQL(ADD_PASSWORD_TO_LOCALPAGEDRAFTS);
+				db.execSQL(ADD_LOCALDRAFT_DATE);
+				db.execSQL(ADD_LOCALPAGEDRAFT_DATE);
 				migratePasswords(ctx);
 				db.setVersion(DATABASE_VERSION); 
 			}
 			else if (db.getVersion() == 4){
 				db.execSQL(ADD_LOCATION_FLAG);
+				db.execSQL(ADD_LATITUDE);
+				db.execSQL(ADD_LONGITUDE);
 				db.execSQL(ADD_TAGLINE);
 				db.execSQL(ADD_TAGLINE_FLAG);
 				db.execSQL(ADD_NEW_COMMENT_ID);
@@ -221,10 +267,16 @@ public class WordPressDB {
 				db.execSQL(ADD_DOTCOM_FLAG);
 				db.execSQL(ADD_WP_VERSION);
 				db.execSQL(ADD_UNIQUE_ID);
+				db.execSQL(ADD_STATUS);
+				db.execSQL(ADD_PAGE_STATUS);
 				db.execSQL(ADD_HTTPUSER);
 				db.execSQL(ADD_HTTPPASSWORD);
-                db.execSQL(ADD_LAST_BLOG_ID);
-                db.execSQL(ADD_POST_FORMATS);
+				db.execSQL(ADD_PASSWORD_TO_POSTSTORE);
+				db.execSQL(ADD_PASSWORD_TO_LOCALDRAFTS);
+				db.execSQL(ADD_PASSWORD_TO_PAGES);
+				db.execSQL(ADD_PASSWORD_TO_LOCALPAGEDRAFTS);
+				db.execSQL(ADD_LOCALDRAFT_DATE);
+				db.execSQL(ADD_LOCALPAGEDRAFT_DATE);
 				migratePasswords(ctx);
 				db.setVersion(DATABASE_VERSION);
 			}
@@ -240,10 +292,16 @@ public class WordPressDB {
 				db.execSQL(ADD_DOTCOM_FLAG);
 				db.execSQL(ADD_WP_VERSION);
 				db.execSQL(ADD_UNIQUE_ID);
+				db.execSQL(ADD_STATUS);
+				db.execSQL(ADD_PAGE_STATUS);
 				db.execSQL(ADD_HTTPUSER);
 				db.execSQL(ADD_HTTPPASSWORD);
-                db.execSQL(ADD_LAST_BLOG_ID);
-                db.execSQL(ADD_POST_FORMATS);
+				db.execSQL(ADD_PASSWORD_TO_POSTSTORE);
+				db.execSQL(ADD_PASSWORD_TO_LOCALDRAFTS);
+				db.execSQL(ADD_PASSWORD_TO_PAGES);
+				db.execSQL(ADD_PASSWORD_TO_LOCALPAGEDRAFTS);
+				db.execSQL(ADD_LOCALDRAFT_DATE);
+				db.execSQL(ADD_LOCALPAGEDRAFT_DATE);
 				migratePasswords(ctx);
 				db.setVersion(DATABASE_VERSION);
 			}
@@ -257,94 +315,65 @@ public class WordPressDB {
 				db.execSQL(ADD_DOTCOM_FLAG);
 				db.execSQL(ADD_WP_VERSION);
 				db.execSQL(ADD_UNIQUE_ID);
+				db.execSQL(ADD_STATUS);
+				db.execSQL(ADD_PAGE_STATUS);
 				db.execSQL(ADD_HTTPUSER);
 				db.execSQL(ADD_HTTPPASSWORD);
-                db.execSQL(ADD_LAST_BLOG_ID);
-                db.execSQL(ADD_POST_FORMATS);
+				db.execSQL(ADD_PASSWORD_TO_POSTSTORE);
+				db.execSQL(ADD_PASSWORD_TO_LOCALDRAFTS);
+				db.execSQL(ADD_PASSWORD_TO_PAGES);
+				db.execSQL(ADD_PASSWORD_TO_LOCALPAGEDRAFTS);
+				db.execSQL(ADD_LOCALDRAFT_DATE);
+				db.execSQL(ADD_LOCALPAGEDRAFT_DATE);
 				migratePasswords(ctx);
 				db.setVersion(DATABASE_VERSION);
 			}
 			else if (db.getVersion() == 7){
 				db.execSQL(ADD_UNIQUE_ID);
+				db.execSQL(ADD_STATUS);
+				db.execSQL(ADD_PAGE_STATUS);
 				db.execSQL(ADD_HTTPUSER);
 				db.execSQL(ADD_HTTPPASSWORD);
-                db.execSQL(ADD_LAST_BLOG_ID);
-                db.execSQL(ADD_POST_FORMATS);
+				db.execSQL(ADD_PASSWORD_TO_POSTSTORE);
+				db.execSQL(ADD_PASSWORD_TO_LOCALDRAFTS);
+				db.execSQL(ADD_PASSWORD_TO_PAGES);
+				db.execSQL(ADD_PASSWORD_TO_LOCALPAGEDRAFTS);
+				db.execSQL(ADD_LOCALDRAFT_DATE);
+				db.execSQL(ADD_LOCALPAGEDRAFT_DATE);
 				migratePasswords(ctx);
 				db.setVersion(DATABASE_VERSION);
 			}
 			else if (db.getVersion() == 8){
+				db.execSQL(ADD_STATUS);
+				db.execSQL(ADD_PAGE_STATUS);
 				db.execSQL(ADD_HTTPUSER);
 				db.execSQL(ADD_HTTPPASSWORD);
-                db.execSQL(ADD_LAST_BLOG_ID);
-                db.execSQL(ADD_POST_FORMATS);
+				db.execSQL(ADD_PASSWORD_TO_POSTSTORE);
+				db.execSQL(ADD_PASSWORD_TO_LOCALDRAFTS);
+				db.execSQL(ADD_PASSWORD_TO_PAGES);
+				db.execSQL(ADD_PASSWORD_TO_LOCALPAGEDRAFTS);
+				db.execSQL(ADD_LOCALDRAFT_DATE);
+				db.execSQL(ADD_LOCALPAGEDRAFT_DATE);
 				migratePasswords(ctx);
 				db.setVersion(DATABASE_VERSION);
 			}
 			else if (db.getVersion() == 9){
 				db.execSQL(ADD_HTTPUSER);
 				db.execSQL(ADD_HTTPPASSWORD);
-                db.execSQL(ADD_LAST_BLOG_ID);
-                db.execSQL(ADD_POST_FORMATS);
+				db.execSQL(ADD_PASSWORD_TO_POSTSTORE);
+				db.execSQL(ADD_PASSWORD_TO_LOCALDRAFTS);
+				db.execSQL(ADD_PASSWORD_TO_PAGES);
+				db.execSQL(ADD_PASSWORD_TO_LOCALPAGEDRAFTS);
+				db.execSQL(ADD_LOCALDRAFT_DATE);
+				db.execSQL(ADD_LOCALPAGEDRAFT_DATE);
 				migratePasswords(ctx);
 				db.setVersion(DATABASE_VERSION);
-			}
-			else if (db.getVersion() == 10){
-				
-				db.delete(POSTS_TABLE, null, null);
-				db.execSQL(CREATE_TABLE_POSTS);
-				
-				try {
-					//migrate drafts
-					//posts
-					db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
-					Cursor c = db.query("localdrafts", new String[] { "blogID", "title", "content", "picturePaths", "date", "categories", "tags", "status", "password", "latitude", "longitude"}, null, null, null, null, "id desc");
-					int numRows = c.getCount();
-					c.moveToFirst();
-					
-					for (int i = 0; i < numRows; ++i) {
-					if (c.getString(0) != null){
-						Post post = new Post(c.getInt(0), c.getString(1), c.getString(2), c.getString(3), c.getLong(4), c.getString(5), c.getString(6), c.getString(7), c.getString(8), c.getDouble(9), c.getDouble(10), false, "", ctx);
-						post.setLocalDraft(true);
-						post.save();	
-					}
-					c.moveToNext();
-					}
-					c.close();
-					
-					db.delete("localdrafts", null, null);
-					
-					//pages
-					db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
-					c = db.query("localpagedrafts", new String[] { "blogID", "title", "content", "picturePaths", "date", "status", "password"}, null, null, null, null, "id desc");
-					numRows = c.getCount();
-					c.moveToFirst();
-					
-					for (int i = 0; i < numRows; ++i) {
-					if (c.getString(0) != null){
-						Post post = new Post(c.getInt(0), c.getString(1), c.getString(2), c.getString(3), c.getLong(4), c.getString(5), c.getString(6), null, null, 0, 0, true, "", ctx);
-						post.setLocalDraft(true);
-						post.setPage(true);
-						post.save();	
-					}
-					c.moveToNext();
-					}
-					c.close();
-					db.delete("localpagedrafts", null, null);
-				} catch (Exception e) {
-					e.printStackTrace();
-					// didn't work, that's ok.
-				}
-				
-				db.execSQL(ADD_LAST_BLOG_ID);
-                db.execSQL(ADD_POST_FORMATS);
-		        db.setVersion(DATABASE_VERSION);
 			}
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
-		
 		db.close();
+		
 	}
 
 	
@@ -425,6 +454,22 @@ public class WordPressDB {
 		return result;
 	}
 	
+	public int getWPCOMBlogID(Context ctx){
+	    int id = -1;
+	    db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
+        Cursor c = db.query(SETTINGS_TABLE, new String[] {"id"}, "dotcomFlag=1", null, null, null, null);
+        int numRows = c.getCount();
+        c.moveToFirst();
+        if (numRows > 0){
+            id = c.getInt(0);
+        }
+        
+        c.close();
+        db.close();
+        
+        return id;
+	}
+	
 	public static String addSlashes( String text ){    	
         final StringBuffer sb                   = new StringBuffer( text.length() * 2 );
         final StringCharacterIterator iterator  = new StringCharacterIterator( text );
@@ -446,7 +491,7 @@ public class WordPressDB {
         return sb.toString();
     }
 
-	public boolean saveSettings(Context ctx, String id, String url, String username, String password, String httpuser, String httppassword, String imagePlacement, boolean centerThumbnail, boolean fullSizeImage, String maxImageWidth, int maxImageWidthId, boolean location, boolean isWPCom, String originalUsername, String postFormats) {
+	public boolean saveSettings(Context ctx, String id, String url, String username, String password, String httpuser, String httppassword, String imagePlacement, boolean centerThumbnail, boolean fullSizeImage, String maxImageWidth, int maxImageWidthId, boolean location, boolean isWPCom, String originalUsername) {
 		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
 		ContentValues values = new ContentValues();
 		values.put("url", url);
@@ -460,7 +505,6 @@ public class WordPressDB {
 		values.put("maxImageWidth", maxImageWidth);
 		values.put("maxImageWidthId", maxImageWidthId);
 		values.put("location", location);
-		values.put("postFormats", postFormats);
 		boolean returnValue = db.update(SETTINGS_TABLE, values, "id=" + id, null) > 0;
 		if (isWPCom){
 			//update the login for other wordpress.com accounts
@@ -475,13 +519,7 @@ public class WordPressDB {
 	
 	public boolean deleteAccount(Context ctx, String id) {
 		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
-
-		int rowsAffected = 0;
-		try {
-			rowsAffected = db.delete(SETTINGS_TABLE, "id=" + id, null);
-		} finally {
-			db.close();
-		}
+		int rowsAffected = db.delete(SETTINGS_TABLE, "id=" + id, null);
 		
 		boolean returnValue = false;
 		if (rowsAffected > 0){
@@ -494,7 +532,7 @@ public class WordPressDB {
 	    	HashMap<String, Object> shortcutHash = shortcuts.get(i);
 	    	
 	    	Intent shortcutIntent = new Intent();
-	    	shortcutIntent.setClassName(EditPost.class.getPackage().getName(), EditPost.class.getName());
+	    	shortcutIntent.setClassName(editPost.class.getPackage().getName(), editPost.class.getName());
 	    	shortcutIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 	    	shortcutIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 	    	shortcutIntent.setAction(Intent.ACTION_VIEW); 
@@ -508,13 +546,14 @@ public class WordPressDB {
 	    	deleteQuickPressShortcut(ctx, shortcutHash.get("id").toString());
 	    }
 	    
+	    db.close();
 		return (returnValue);
 	}
 
-	public Vector<Object> loadSettings(Context ctx, int id) {
+	public Vector<Object> loadSettings(Context ctx, String id) {
 		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
 		
-		Cursor c = db.query(SETTINGS_TABLE, new String[] { "url", "blogName", "username", "password", "httpuser", "httppassword", "imagePlacement", "centerThumbnail", "fullSizeImage", "maxImageWidth", "maxImageWidthId", "runService", "blogId", "location", "dotcomFlag", "dotcom_username", "dotcom_password", "api_key", "api_blogid", "wpVersion", "postFormats"}, "id=" + id, null, null, null, null);
+		Cursor c = db.query(SETTINGS_TABLE, new String[] { "url", "blogName", "username", "password", "httpuser", "httppassword", "imagePlacement", "centerThumbnail", "fullSizeImage", "maxImageWidth", "maxImageWidthId", "runService", "blogId", "location", "dotcomFlag"}, "id=" + id, null, null, null, null);
 		
 		int numRows = c.getCount();
 		c.moveToFirst();
@@ -540,19 +579,13 @@ public class WordPressDB {
 			}
 			returnVector.add(c.getString(6));
 			returnVector.add(c.getInt(7));
-			returnVector.add(c.getInt(8));
+			returnVector.add(c.getString(8));
 			returnVector.add(c.getString(9));
 			returnVector.add(c.getInt(10));
 			returnVector.add(c.getInt(11));
 			returnVector.add(c.getInt(12));
 			returnVector.add(c.getInt(13));
 			returnVector.add(c.getInt(14));
-			returnVector.add(c.getString(15));
-			returnVector.add(decryptPassword(c.getString(16)));
-			returnVector.add(c.getString(17));
-			returnVector.add(c.getString(18));
-			returnVector.add(c.getString(19));
-			returnVector.add(c.getString(20));
 			}
 			else
 			{
@@ -587,7 +620,7 @@ public class WordPressDB {
 		return returnVector;
 	}
 	
-	public boolean saveStatsLogin(Context ctx, int id, String statsUsername, String statsPassword) {
+	public boolean saveStatsLogin(Context ctx, String id, String statsUsername, String statsPassword) {
 		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
 		ContentValues values = new ContentValues();
 		values.put("dotcom_username", statsUsername);
@@ -599,7 +632,7 @@ public class WordPressDB {
 		
 	}
 	
-	public Vector<String> loadAPIData(Context ctx, int id) {
+	public Vector<String> loadAPIData(Context ctx, String id) {
 		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
 		
 		Cursor c = db.query(SETTINGS_TABLE, new String[] { "api_key", "api_blogid"}, "id=" + id, null, null, null, null);
@@ -621,7 +654,7 @@ public class WordPressDB {
 		return returnVector;
 	}
 	
-	public boolean saveAPIData(Context ctx, int id, String apiKey, String apiBlogID) {
+	public boolean saveAPIData(Context ctx, String id, String apiKey, String apiBlogID) {
 		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
 		ContentValues values = new ContentValues();
 		values.put("api_key", apiKey);
@@ -647,7 +680,7 @@ public class WordPressDB {
 	}
 
 
-	public boolean updateLatestCommentID(Context ctx, int id, Integer newCommentID) {
+	public boolean updateLatestCommentID(Context ctx, String id, Integer newCommentID) {
 		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
 		ContentValues values = new ContentValues();
 		values.put("lastCommentId", newCommentID);
@@ -732,7 +765,7 @@ public class WordPressDB {
 	}
 	
 	public String getInterval(Context ctx) {
-	    db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
+db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
 		
 		Cursor c = db.query("eula", new String[] { "interval" }, "id=0", null, null, null, null);
 		int numRows = c.getCount();
@@ -783,51 +816,63 @@ public class WordPressDB {
 		
 		return thisHash;
 	}
-
-	public void updateLastBlogID(Context ctx, int blogID ) {
-        db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
-        ContentValues values = new ContentValues();
-        values.put("last_blog_id", blogID);
-
-        db.update("eula", values, null, null);
-
-        db.close();
-        
-    }
 	
-	public int getLastBlogID(Context ctx) {
-        db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
-        int returnValue = -1;
-        Cursor c = db.query("eula", new String[] { "last_blog_id" }, "id=0", null, null, null, null);
-        int numRows = c.getCount();
-        c.moveToFirst();
-        if (numRows == 1){
-            if (c.getString(0) != null){
-            returnValue = c.getInt(0);
-            }
-        }
-        c.close();
-        db.close();
+	//localDrafts
+	public boolean saveLocalDraft(Context ctx, String blogID, String title, String content, String picturePaths, String tags, String categories, String status, Double latitude, Double longitude, String password, long pubDate) {
+		boolean returnValue = false;
+		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
+		
+			ContentValues values = new ContentValues();
+			values.put("blogID", blogID);
+			values.put("title", title);
+			values.put("content", content);
+			values.put("picturePaths", picturePaths);
+			values.put("tags", tags);
+			values.put("categories", categories);
+			values.put("status", status);
+			values.put("latitude", latitude);
+			values.put("longitude", longitude);
+			values.put("password", password);
+			values.put("date", pubDate);
+			returnValue = db.insert(LOCALDRAFTS_TABLE, null, values) > 0;
 
-        return returnValue;
-    }
+		db.close();
+		return (returnValue);
+	}
 	
-	public Vector<HashMap<String, Object>> loadDrafts(Context ctx, int blogID, boolean loadPages) {
+	public boolean updateLocalDraft(Context ctx, String blogID, String postID, String title, String content, String picturePaths, String tags, String categories, String status, Double latitude, Double longitude, String password, long pubDate) {
+		boolean returnValue = false;
+		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
+		
+			ContentValues values = new ContentValues();
+			values.put("blogID", blogID);
+			values.put("title", title);
+			values.put("content", content);
+			values.put("picturePaths", picturePaths);
+			values.put("tags", tags);
+			values.put("categories", categories);
+			values.put("status", status);
+			values.put("latitude", latitude);
+			values.put("longitude", longitude);
+			values.put("password", password);
+			values.put("date", pubDate);
+			returnValue = db.update(LOCALDRAFTS_TABLE, values, "id=" + postID, null) > 0;
+
+		db.close();
+		return (returnValue);
+	}
+
+	public Vector<HashMap<String, Object>> loadPosts(Context ctx, String blogID) {
 		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
 		Vector<HashMap<String, Object>> returnVector = new Vector<HashMap<String, Object>>();
-		Cursor c;
-		if (loadPages)
-			c = db.query(POSTS_TABLE, new String[] { "id", "title", "post_status", "uploaded"}, "blogID=" + blogID + " AND localDraft=1 AND uploaded=0 AND isPage=1", null, null, null, null);
-		else
-			c = db.query(POSTS_TABLE, new String[] { "id", "title", "post_status", "uploaded"}, "blogID=" + blogID + " AND localDraft=1 AND uploaded=0 AND isPage=0", null, null, null, null);
-		
+		Cursor c = db.query(LOCALDRAFTS_TABLE, new String[] { "id", "title", "status", "uploaded"}, "blogID=" + blogID, null, null, null, "id desc");
 		int numRows = c.getCount();
 		c.moveToFirst();
 		
 		for (int i = 0; i < numRows; ++i) {
 		if (c.getString(0) != null){
 		HashMap<String, Object> returnHash = new HashMap<String, Object>();
-		returnHash.put("id", c.getString(0));
+		returnHash.put("id", c.getInt(0));
 		returnHash.put("title", c.getString(1));
 		returnHash.put("status", c.getString(2));
 		returnHash.put("uploaded", c.getInt(3));
@@ -837,7 +882,7 @@ public class WordPressDB {
 		}
 		c.close();
 		db.close();
-		
+
 		if (numRows == 0){
 			returnVector = null;
 		}
@@ -845,185 +890,10 @@ public class WordPressDB {
 		return returnVector;
 	}
 	
-
-
-	public boolean deletePost(Context ctx, Post post) {
-		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
-		
-		boolean returnValue = false;
-
-		int result = 0;
-		result = db.delete(POSTS_TABLE, "blogID=" + post.getBlogID() + " AND id=" + post.getId(), null);
-		db.close();
-		
-		if (result == 1){
-			returnValue = true;
-		}
-		
-		return returnValue;
-	}
-
-	public boolean savePosts(Context ctx, Vector<?> postValues, int blogID, boolean isPage) {
-		boolean returnValue = false;
-		if (postValues.size() != 0)
-		{
-		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
-
-		for (int i = 0; i < postValues.size(); i++){
-			ContentValues values = new ContentValues();
-			HashMap<?, ?> thisHash = (HashMap<?, ?>) postValues.get(i);
-			values.put("blogID", blogID);
-			String postID = thisHash.get((isPage) ? "page_id" : "postid").toString();
-			values.put("postid", postID);
-			values.put("title", thisHash.get("title").toString());
-			Date d = (Date) thisHash.get("dateCreated");
-			values.put("dateCreated", d.getTime());
-			d = (Date) thisHash.get("date_created_gmt");
-			values.put("date_created_gmt", d.getTime());
-			values.put("description", thisHash.get("description").toString());
-			values.put("link", thisHash.get("link").toString());
-			values.put("permaLink", thisHash.get("permaLink").toString());
-			
-			Object[] cats = (Object[]) thisHash.get("categories");
-			JSONArray jsonArray = new JSONArray(); 
-			if (cats != null) { 
-			   for (int x=0;x<cats.length;x++){ 
-			    jsonArray.put(cats[x].toString());
-			} 
-			}
-			values.put("categories", jsonArray.toString());
-			
-			Object[] custom_fields = (Object[]) thisHash.get("custom_fields");
-            jsonArray = new JSONArray(); 
-            if (custom_fields != null) { 
-               for (int x=0;x<custom_fields.length;x++){ 
-                jsonArray.put(custom_fields[x].toString());
-            } 
-            }
-            values.put("custom_fields", jsonArray.toString());
-			
-			values.put("mt_excerpt", thisHash.get((isPage) ? "excerpt" : "mt_excerpt").toString());
-			values.put("mt_text_more", thisHash.get((isPage) ? "text_more" : "mt_text_more").toString());
-			values.put("mt_allow_comments", (Integer)thisHash.get("mt_allow_comments"));
-			values.put("mt_allow_pings", (Integer) thisHash.get("mt_allow_pings"));
-			values.put("wp_slug", thisHash.get("wp_slug").toString());
-			values.put("wp_password", thisHash.get("wp_password").toString());
-			values.put("wp_author_id", thisHash.get("wp_author_id").toString());
-			values.put("wp_author_display_name", thisHash.get("wp_author_display_name").toString());
-			values.put("post_status", thisHash.get((isPage) ? "page_status" : "post_status").toString());
-			values.put("userid", thisHash.get("userid").toString());
-			
-			int isPageInt = 0;
-			if (isPage) {
-			    isPageInt = 1;
-				values.put("isPage", true);
-				values.put("wp_page_parent_id", thisHash.get("wp_page_parent_id").toString());
-				values.put("wp_page_parent_title", thisHash.get("wp_page_parent_title").toString());
-			}
-			else {
-				values.put("mt_keywords", thisHash.get("mt_keywords").toString());
-				values.put("wp_post_format", thisHash.get("wp_post_format").toString());
-			}
-
-			int result = db.update(POSTS_TABLE, values, "postID=" + postID + " AND isPage=" + isPageInt, null);
-			if (result == 0)
-			    returnValue = db.insert(POSTS_TABLE, null, values) > 0;
-			else
-			    returnValue = true;
-		}
-		db.close();
-		}
-		return (returnValue);
-	}
-	
-	public long savePost(Context ctx, Post post, int blogID) {
-		long returnValue = -1;
-		if (post != null)
-		{
-		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
-
-		ContentValues values = new ContentValues();
-		values.put("blogID", blogID);
-		values.put("title", post.getTitle());
-		values.put("date_created_gmt", post.getDate_created_gmt());
-		values.put("description", post.getDescription());
-
-		if (post.getCategories() != null) {
-			JSONArray jsonArray = null;
-			try {
-				jsonArray = new JSONArray(post.getCategories().toString());
-				values.put("categories", jsonArray.toString());
-			} catch (JSONException e) {
-				e.printStackTrace();
-			}
-		}
-
-		values.put("localDraft", post.isLocalDraft());
-		values.put("mediaPaths", post.getMediaPaths());
-		values.put("mt_keywords", post.getMt_keywords());
-		values.put("wp_password", post.getWP_password());
-		values.put("post_status", post.getPost_status());
-        values.put("uploaded", post.isUploaded());
-		values.put("isPage", post.isPage());
-		values.put("wp_post_format", post.getWP_post_format());
-		
-		returnValue = db.insert(POSTS_TABLE, null, values);
-
-		db.close();
-		}
-		return (returnValue);
-	}
-	
-	public int updatePost(Context ctx, Post post, int blogID) {
-        int success = 0;
-        if (post != null)
-        {
-        db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
-
-        ContentValues values = new ContentValues();
-        values.put("blogID", blogID);
-        values.put("title", post.getTitle());
-        values.put("date_created_gmt", post.getDate_created_gmt());
-        values.put("description", post.getDescription());
-        values.put("uploaded", post.isUploaded());
-        
-        if (post.getCategories() != null) {
-            JSONArray jsonArray = null;
-            try {
-                jsonArray = new JSONArray(post.getCategories().toString());
-                values.put("categories", jsonArray.toString());
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-        }
-
-        values.put("localDraft", post.isLocalDraft());
-        values.put("mediaPaths", post.getMediaPaths());
-        values.put("mt_keywords", post.getMt_keywords());
-        values.put("wp_password", post.getWP_password());
-        values.put("post_status", post.getPost_status());
-        values.put("isPage", post.isPage());
-        values.put("wp_post_format", post.getWP_post_format());
-
-        int pageInt = 0;
-        if (post.isPage())
-            pageInt = 1;
-
-        success = db.update(POSTS_TABLE, values, "blogID=" + post.getBlogID() + " AND id=" + post.getId() + " AND isPage=" + pageInt, null);
-
-        db.close();
-        }
-        return (success);
-    }
-
-	public Vector<HashMap<String, Object>> loadUploadedPosts(Context ctx, int blogID, boolean loadPages) {
+	public Vector<HashMap<String, Object>> loadPost(Context ctx, String postID) {
 		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
 		Vector<HashMap<String, Object>> returnVector = new Vector<HashMap<String, Object>>();
-		Cursor c;
-		if (loadPages)
-			c = db.query(POSTS_TABLE, new String[] { "id", "blogID", "postid", "title", "date_created_gmt", "dateCreated"}, "blogID=" + blogID + " AND localDraft != 1 AND isPage=1", null, null, null, null);
-		else
-			c = db.query(POSTS_TABLE, new String[] { "id", "blogID", "postid", "title", "date_created_gmt", "dateCreated"}, "blogID=" + blogID + " AND localDraft != 1 AND isPage=0", null, null, null, null);
+		Cursor c = db.query(LOCALDRAFTS_TABLE, new String[] { "title", "content", "picturePaths", "tags", "categories", "status", "latitude", "longitude", "password", "date"}, "id=" + postID, null, null, null, null);
 		
 		int numRows = c.getCount();
 		c.moveToFirst();
@@ -1031,12 +901,16 @@ public class WordPressDB {
 		for (int i = 0; i < numRows; ++i) {
 		if (c.getString(0) != null){
 		HashMap<String, Object> returnHash = new HashMap<String, Object>();
-		returnHash.put("id", c.getInt(0));
-		returnHash.put("blogID", c.getString(1));
-		returnHash.put("postID", c.getString(2));
-		returnHash.put("title", c.getString(3));
-		returnHash.put("date_created_gmt", c.getLong(4));
-		returnHash.put("dateCreated", c.getLong(5));
+		returnHash.put("title", c.getString(0));
+		returnHash.put("content", c.getString(1));
+		returnHash.put("picturePaths", c.getString(2));
+		returnHash.put("tags", c.getString(3));
+		returnHash.put("categories", c.getString(4));
+		returnHash.put("status", c.getString(5));
+		returnHash.put("latitude", c.getDouble(6));
+		returnHash.put("longitude", c.getDouble(7));
+		returnHash.put("password", c.getString(8));
+		returnHash.put("pubDate", c.getLong(9));
 		returnVector.add(i, returnHash);
 		}
 		c.moveToNext();
@@ -1050,56 +924,281 @@ public class WordPressDB {
 		
 		return returnVector;
 	}
-	
-	public Vector<Object> loadPost(Context ctx, int blogID, boolean isPage, long id) {
-		Vector<Object> values = null;
-		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
-		int pageInt = 0;
-		if (isPage)
-			pageInt = 1;
-		Cursor c = db.query(POSTS_TABLE, null, "blogID=" + blogID + " AND id=" + id + " AND isPage=" + pageInt, null, null, null, null);
 
+	public boolean deletePost(Context ctx, String postID) {
+		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
+		
+		boolean returnValue = false;
+
+		int result = 0;
+		result = db.delete(LOCALDRAFTS_TABLE, "id=" + postID, null);
+		db.close();
+		
+		if (result == 1){
+			returnValue = true;
+		}
+		
+		return returnValue;
+	}
+	
+	public boolean saveLocalPageDraft(Context ctx, String blogID, String title, String content, String picturePaths, String status, String password, long pubDate) {
+		boolean returnValue = false;
+		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
+		
+			ContentValues values = new ContentValues();
+			values.put("blogID", blogID);
+			values.put("title", title);
+			values.put("content", content);
+			values.put("picturePaths", picturePaths);
+			values.put("status", status);
+			values.put("password", password);
+			values.put("date", pubDate);
+			returnValue = db.insert(LOCALPAGEDRAFTS_TABLE, null, values) > 0;
+
+		db.close();
+		return (returnValue);
+	}
+	
+	public boolean updateLocalPageDraft(Context ctx, String blogID, String postID, String title, String content, String picturePaths, String status, String password, long pubDate) {
+		boolean returnValue = false;
+		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
+		
+			ContentValues values = new ContentValues();
+			values.put("blogID", blogID);
+			values.put("title", title);
+			values.put("content", content);
+			values.put("picturePaths", picturePaths);
+			values.put("status", status);
+			values.put("password", password);
+			values.put("date", pubDate);
+			returnValue = db.update(LOCALPAGEDRAFTS_TABLE, values, "id=" + postID, null) > 0;
+
+		db.close();
+		return (returnValue);
+	}
+	
+	public Vector<HashMap<String, Object>> loadPageDrafts(Context ctx, String blogID) {
+		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
+		Vector<HashMap<String, Object>> returnVector = new Vector<HashMap<String, Object>>();
+		Cursor c = db.query(LOCALPAGEDRAFTS_TABLE, new String[] { "id", "title", "status", "uploaded"}, "blogID=" + blogID, null, null, null, "id desc");
+		int numRows = c.getCount();
 		c.moveToFirst();
 		
+		for (int i = 0; i < numRows; ++i) {
 		if (c.getString(0) != null){
-			values = new Vector<Object>();
-			values.add(c.getLong(0));
-			values.add(c.getString(1));
-			values.add(c.getString(2));
-			values.add(c.getString(3));
-			values.add(c.getLong(4));
-			values.add(c.getLong(5));
-			values.add(c.getString(6));
-			values.add(c.getString(7));
-			values.add(c.getString(8));
-			values.add(c.getString(9));
-			values.add(c.getInt(10));
-			values.add(c.getInt(11));
-			values.add(c.getString(12));
-			values.add(c.getString(13));
-			values.add(c.getString(14));
-			values.add(c.getString(15));
-			values.add(c.getString(16));
-			values.add(c.getString(17));
-			values.add(c.getString(18));
-			values.add(c.getString(19));
-			values.add(c.getString(20));
-			values.add(c.getString(21));
-			values.add(c.getString(22));
-			values.add(c.getString(23));
-			values.add(c.getDouble(24));
-			values.add(c.getDouble(25));
-			values.add(c.getInt(26));
-			values.add(c.getInt(27));
-			values.add(c.getInt(28));
+		HashMap<String, Object> returnHash = new HashMap<String, Object>();
+		returnHash.put("id", c.getInt(0));
+		returnHash.put("title", c.getString(1));
+		returnHash.put("status", c.getString(2));
+		returnHash.put("uploaded", c.getInt(3));
+		returnVector.add(i, returnHash);
+		}
+		c.moveToNext();
+		}
+		c.close();
+		db.close();
+
+		if (numRows == 0){
+			returnVector = null;
+		}
+		
+		return returnVector;
+	}
+	
+	public Vector<HashMap<String, Object>> loadPageDraft(Context ctx, String postID) {
+		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
+		Vector<HashMap<String, Object>> returnVector = new Vector<HashMap<String, Object>>();
+		Cursor c = db.query(LOCALPAGEDRAFTS_TABLE, new String[] { "title", "content", "picturePaths", "status", "password", "date"}, "id=" + postID, null, null, null, null);
+		
+		int numRows = c.getCount();
+		c.moveToFirst();
+		
+		for (int i = 0; i < numRows; ++i) {
+		if (c.getString(0) != null){
+		HashMap<String, Object> returnHash = new HashMap<String, Object>();
+		returnHash.put("title", c.getString(0));
+		returnHash.put("content", c.getString(1));
+		returnHash.put("picturePaths", c.getString(2));
+		returnHash.put("status", c.getString(3));
+		returnHash.put("password", c.getString(4));
+		returnHash.put("pubDate", c.getString(5));
+		returnVector.add(i, returnHash);
+		}
+		c.moveToNext();
 		}
 		c.close();
 		db.close();
 		
-		return values;
+		if (numRows == 0){
+			returnVector = null;
+		}
+		
+		return returnVector;
+	}
+
+	public boolean deletePageDraft(Context ctx, String postID) {
+		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
+		
+		boolean returnValue = false;
+
+		int result = 0;
+		result = db.delete(LOCALPAGEDRAFTS_TABLE, "id=" + postID, null);
+		db.close();
+		
+		if (result == 1){
+			returnValue = true;
+		}
+		
+		return returnValue;
+	}
+
+	public int getLatestDraftID(Context ctx, String id) {
+		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
+		Cursor c = db.query(LOCALDRAFTS_TABLE, new String[] {"id"}, "blogID=" + id, null, null, null, "id desc", "1");
+		
+		int latestID = -1;
+		int numRows = c.getCount();
+		if (numRows != 0){
+			c.moveToFirst();
+			latestID = c.getInt(0);
+		}
+		c.close();
+		db.close();
+		
+		return latestID;
 	}
 	
-	public Vector<HashMap<String, Object>> loadComments(Context ctx, int blogID) {
+	public int getLatestPageDraftID(Context ctx, String id) {
+		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
+		Cursor c = db.query(LOCALPAGEDRAFTS_TABLE, new String[] {"id"}, "blogID=" + id, null, null, null, "id desc", "1");
+		
+		int latestID = -1;
+		int numRows = c.getCount();
+		if (numRows != 0){
+			c.moveToFirst();
+			latestID = c.getInt(0);
+		}
+		c.close();
+		db.close();
+		
+		return latestID;
+	}
+	
+	//postStore
+	public boolean savePosts(Context ctx, Vector<?> postValues) {
+		boolean returnValue = false;
+		if (postValues.size() != 0)
+		{
+		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
+		HashMap<?, ?> firstHash = (HashMap<?, ?>) postValues.get(0);
+		String blogID = firstHash.get("blogID").toString();
+		//delete existing values
+		db.delete(POSTSTORE_TABLE, "blogID=" + blogID, null);
+
+		for (int i = 0; i < postValues.size(); i++){
+			ContentValues values = new ContentValues();
+			HashMap<?, ?> thisHash = (HashMap<?, ?>) postValues.get(i);
+			values.put("blogID", thisHash.get("blogID").toString());
+			values.put("postID", thisHash.get("postID").toString());
+			values.put("title", thisHash.get("title").toString());
+			values.put("postDate", thisHash.get("postDate").toString());
+			values.put("postDateFormatted", thisHash.get("postDateFormatted").toString());
+			returnValue = db.insert(POSTSTORE_TABLE, null, values) > 0;
+		}
+		
+		
+		db.close();
+		}
+		return (returnValue);
+	}
+
+	public Vector<HashMap<String, String>> loadSavedPosts(Context ctx, String blogID) {
+		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
+		Vector<HashMap<String, String>> returnVector = new Vector<HashMap<String, String>>();
+		Cursor c = db.query(POSTSTORE_TABLE, new String[] { "blogID", "postID", "title", "postDate", "postDateFormatted"}, "blogID=" + blogID, null, null, null, null);
+		
+		int numRows = c.getCount();
+		c.moveToFirst();
+		
+		for (int i = 0; i < numRows; ++i) {
+		if (c.getString(0) != null){
+		HashMap<String, String> returnHash = new HashMap<String, String>();
+		returnHash.put("blogID", c.getString(0));
+		returnHash.put("postID", c.getString(1));
+		returnHash.put("title", c.getString(2));
+		returnHash.put("postDate", c.getString(3));
+		returnHash.put("postDateFormatted", c.getString(4));
+		returnVector.add(i, returnHash);
+		}
+		c.moveToNext();
+		}
+		c.close();
+		db.close();
+		
+		if (numRows == 0){
+			returnVector = null;
+		}
+		
+		return returnVector;
+	}
+
+	public Vector<HashMap<String, String>> loadPages(Context ctx, String blogID) {
+		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
+		Vector<HashMap<String, String>> returnVector = new Vector<HashMap<String, String>>();
+		Cursor c = db.query(PAGES_TABLE, new String[] { "blogID", "pageID", "title", "pageDate", "pageDateFormatted"}, "blogID=" + blogID, null, null, null, null);
+		
+		int numRows = c.getCount();
+		c.moveToFirst();
+		
+		for (int i = 0; i < numRows; ++i) {
+		if (c.getString(0) != null){
+		HashMap<String, String> returnHash = new HashMap<String, String>();
+		returnHash.put("blogID", c.getString(0));
+		returnHash.put("pageID", c.getString(1));
+		returnHash.put("title", c.getString(2));
+		returnHash.put("pageDate", c.getString(3));
+		returnHash.put("pageDateFormatted", c.getString(4));
+		returnVector.add(i, returnHash);
+		}
+		c.moveToNext();
+		}
+		c.close();
+		db.close();
+		
+		if (numRows == 0){
+			returnVector = null;
+		}
+		
+		return returnVector;
+	}
+
+	public boolean savePages(Context ctx, Vector<?> pageValues) {
+		boolean returnValue = false;
+		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
+		HashMap<?, ?> firstHash = (HashMap<?, ?>) pageValues.get(0);
+		String blogID = firstHash.get("blogID").toString();
+		//delete existing values
+		db.delete(PAGES_TABLE, "blogID=" + blogID, null);
+
+		for (int i = 0; i < pageValues.size(); i++){
+			ContentValues values = new ContentValues();
+			HashMap<?, ?> thisHash = (HashMap<?, ?>) pageValues.get(i);
+			values.put("blogID", thisHash.get("blogID").toString());
+			values.put("pageID", thisHash.get("pageID").toString());
+			values.put("parentID", thisHash.get("parentID").toString());
+			values.put("title", thisHash.get("title").toString());
+			values.put("pageDate", thisHash.get("pageDate").toString());
+			values.put("pageDateFormatted", thisHash.get("pageDateFormatted").toString());
+			returnValue = db.insert(PAGES_TABLE, null, values) > 0;
+		}
+		
+		
+		db.close();
+		return (returnValue);
+		
+	}
+	
+	public Vector<HashMap<String, Object>> loadComments(Context ctx, String blogID) {
 		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
 		Vector<HashMap<String, Object>> returnVector = new Vector<HashMap<String, Object>>();
 		Cursor c = db.query(COMMENTS_TABLE, new String[] { "blogID", "postID", "iCommentID", "author", "comment", "commentDate", "commentDateFormatted", "status", "url", "email", "postTitle"}, "blogID=" + blogID, null, null, null, null);
@@ -1142,7 +1241,7 @@ public class WordPressDB {
 		return returnVector;
 	}
 	
-	public Vector<HashMap<String, Object>> loadMoreComments(Context ctx, int blogID, int limit) {
+	public Vector<HashMap<String, Object>> loadMoreComments(Context ctx, String blogID, int limit) {
 		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
 		Vector<HashMap<String, Object>> returnVector = new Vector<HashMap<String, Object>>();
 		Cursor c = db.query(COMMENTS_TABLE, new String[] { "blogID", "postID", "iCommentID", "author", "comment", "commentDate", "commentDateFormatted", "status", "url", "email", "postTitle"}, "blogID=" + blogID, null, null, null, "iCommentID ASC", String.valueOf(limit));
@@ -1224,7 +1323,7 @@ public class WordPressDB {
 		
 	}
 	
-	public void updateCommentStatus(Context ctx, int blogID, String id, String newStatus) {
+	public void updateCommentStatus(Context ctx, String blogID, String id, String newStatus) {
 		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
 		
 		ContentValues values = new ContentValues();
@@ -1236,10 +1335,17 @@ public class WordPressDB {
 		
 	}
 
+	public void clearPages(Context ctx, String blogID) {
+		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
+		//delete existing values
+		db.delete(PAGES_TABLE, "blogID=" + blogID, null);
+		db.close();
+	}
+
 	public void clearPosts(Context ctx, String blogID) {
 		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
 		//delete existing values
-		db.delete(POSTS_TABLE, "blogID=" + blogID, null);
+		db.delete(POSTSTORE_TABLE, "blogID=" + blogID, null);
 		db.close();
 		
 	}
@@ -1299,7 +1405,7 @@ public class WordPressDB {
 	}
 	
 	//categories
-	public boolean insertCategory(Context ctx, int id, int wp_id, String category_name) {
+	public boolean insertCategory(Context ctx, String id, int wp_id, String category_name) {
 		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
 		ContentValues values = new ContentValues();
 		values.put("blog_id", id);
@@ -1310,7 +1416,7 @@ public class WordPressDB {
 		return (returnValue);
 	}
 
-	public Vector<String> loadCategories(Context ctx, int id) {
+	public Vector<String> loadCategories(Context ctx, String id) {
 		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
 		
 		Cursor c = db.query(CATEGORIES_TABLE, new String[] { "id", "wp_id", "category_name" }, "blog_id=" + id, null, null, null, null);
@@ -1331,7 +1437,7 @@ public class WordPressDB {
 		return returnVector;
 	}
 	
-	public int getCategoryId(Context ctx, int id, String category){
+	public int getCategoryId(Context ctx, String id, String category){
 		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
 		
 		Cursor c = db.query(CATEGORIES_TABLE, new String[] {"wp_id"}, "category_name=\"" + category + "\" AND blog_id=" + id, null, null, null, null);
@@ -1342,7 +1448,7 @@ public class WordPressDB {
 		return categoryID;
 	}
 	
-	public void clearCategories(Context ctx, int id){
+	public void clearCategories(Context ctx, String id){
 		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
 		//clear out the table since we are refreshing the whole enchilada
 		db.delete(CATEGORIES_TABLE, "blog_id=" + id, null);
@@ -1456,7 +1562,7 @@ public class WordPressDB {
 			byte[] plainTextPwdBytes = cipher.doFinal(encryptedWithoutB64);
 			return new String(plainTextPwdBytes);
 		} catch(Exception e) {
-			//e.printStackTrace();
+			e.printStackTrace();
 		}
 		return encryptedPwd;
 	}
@@ -1488,21 +1594,5 @@ public class WordPressDB {
 		c.close();
 	}
 
-
-    public int getUnmoderatedCommentCount(Context ctx, int blogID) {
-            int commentCount = 0;
-            db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);
-            Cursor c = db.rawQuery("select count(*) from comments where blogID=? AND status='hold'", new String[] { String.valueOf(blogID) });
-            int numRows = c.getCount();
-            c.moveToFirst();
-            
-            HashMap<String, Object> numRecords = new HashMap<String, Object>();
-            if (numRows > 0){
-                commentCount=c.getInt(0);
-            }
-            
-            c.close();
-            db.close();
-        return commentCount;
-    }
 }
+

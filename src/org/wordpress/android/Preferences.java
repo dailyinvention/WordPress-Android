@@ -1,6 +1,7 @@
 package org.wordpress.android;
 
-import org.wordpress.android.util.EscapeUtils;
+import java.util.HashMap;
+import java.util.Vector;
 
 import android.app.Activity;
 import android.app.AlarmManager;
@@ -22,9 +23,6 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
-
-import java.util.HashMap;
-import java.util.Vector;
 
 
 public class Preferences extends Activity {
@@ -121,7 +119,7 @@ public void displayAccounts(){
             final CheckBox checkBox = new CheckBox(this);
             checkBox.setTextColor(Color.parseColor("#444444"));
             checkBox.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
-            checkBox.setText(EscapeUtils.unescapeHtml(curBlogName));
+            checkBox.setText(escapeUtils.unescapeHtml(curBlogName));
             checkBox.setId(Integer.valueOf(accountID));  
             checkBox.setLayoutParams(cbParams);
             
@@ -327,7 +325,7 @@ public void displayAccounts(){
         	        	 UPDATE_INTERVAL = 86400000;
         	         }
         	        
-        	        Intent intent = new Intent(Preferences.this, CommentBroadcastReceiver.class);
+        	        Intent intent = new Intent(Preferences.this, broadcastReceiver.class);
                 	PendingIntent pIntent = PendingIntent.getBroadcast(Preferences.this, 0, intent, 0);
                 	
                 	AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
@@ -336,12 +334,12 @@ public void displayAccounts(){
         			  
         		}
         		else{
-					Intent stopIntent = new Intent(Preferences.this, CommentBroadcastReceiver.class);
+					Intent stopIntent = new Intent(Preferences.this, broadcastReceiver.class);
                 	PendingIntent stopPIntent = PendingIntent.getBroadcast(Preferences.this, 0, stopIntent, 0);
                 	AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
                 	alarmManager.cancel(stopPIntent); 
                 	
-                	Intent service = new Intent(Preferences.this, CommentService.class);
+                	Intent service = new Intent(Preferences.this, commentService.class);
                 	stopService(service);
             	}
             	

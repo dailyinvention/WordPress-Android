@@ -6,15 +6,13 @@
   android:layout_height="fill_parent"
   android:padding="0px"
   android:orientation="vertical">
-  <include
-    layout="@layout/action_bar" android:id="@+id/actionBar"/>
   <WebView
     android:id="@+id/webView"
     android:layout_width="wrap_content"
     android:layout_height="fill_parent"
     android:layout_weight="1">
   </WebView>
-  <LinearLayout
+  <RelativeLayout
  xmlns:android="http://schemas.android.com/apk/res/android"
  android:layout_height="wrap_content"
  android:layout_width="fill_parent"
@@ -24,21 +22,27 @@
  android:background="@drawable/home_gradient">
     <ImageButton
       android:id="@+id/browserBack"
-      android:layout_width="fill_parent"
-      android:layout_height="wrap_content"
-      android:text="Back"
+      android:layout_width="50dp"
+      android:layout_height="50dp"
+      android:background="@drawable/menu_button_selector"
       android:src="@drawable/ic_menu_back"
-      android:layout_weight="0.5"
-      android:padding="0dip"
-      android:visibility="gone"/>
+      android:padding="0dip"/>
     <ImageButton
       android:id="@+id/browserForward"
-      android:layout_width="fill_parent"
-      android:layout_height="wrap_content"
-      android:text="Back"
+      android:layout_width="50dp"
+      android:layout_toRightOf="@id/browserBack"
+      android:layout_height="50dp"
       android:src="@drawable/ic_menu_forward"
-      android:layout_weight="0.5" 
-      android:padding="0dip"
-      android:visibility="gone"/>
-</LinearLayout>
+      android:background="@drawable/menu_button_selector"
+      android:padding="0dip"/>
+   <ImageButton
+      android:id="@+id/browserRefresh"
+      android:layout_width="40dp"
+      android:layout_height="40dp"
+      android:layout_alignParentRight="true"
+      android:layout_marginTop="5dp"
+      android:src="@drawable/browser_reload"
+      android:layout_marginRight="4dp"
+      android:background="@drawable/menu_button_selector"/>
+</RelativeLayout>
 </LinearLayout>

@@ -1,6 +1,11 @@
 package org.wordpress.android;
 
-import com.commonsware.cwac.thumbnail.ThumbnailAdapter;
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.UUID;
+import java.util.Vector;
 
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
@@ -8,10 +13,9 @@ import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
-import org.wordpress.android.util.AlertUtil;
-import org.wordpress.android.util.EscapeUtils;
 
 import android.app.AlarmManager;
+import android.app.AlertDialog;
 import android.app.ListActivity;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -22,6 +26,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Configuration;
 import android.graphics.PixelFormat;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.telephony.TelephonyManager;
 import android.view.ContextMenu;
@@ -36,6 +41,7 @@ import android.view.View.OnCreateContextMenuListener;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -44,12 +50,10 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.AdapterView.OnItemClickListener;
 
-import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
-import java.util.Vector;
+import com.commonsware.cwac.cache.SimpleWebImageCache;
+import com.commonsware.cwac.thumbnail.ThumbnailAdapter;
+import com.commonsware.cwac.thumbnail.ThumbnailBus;
+import com.commonsware.cwac.thumbnail.ThumbnailMessage;
 
 public class wpAndroid extends ListActivity {
 	/** Called when the activity is first created. */
@@ -61,10 +65,8 @@ public class wpAndroid extends ListActivity {
 	public String[] blavatars;
 	protected String selectedID = "";
 	protected ThumbnailAdapter thumbs = null;
-	public String blog_name = "";
 	protected static final int[] IMAGE_IDS = { R.id.blavatar };
-	public Integer default_blog = 0;
-	
+
 	@Override
 	public void onCreate(Bundle icicle) {
 		super.onCreate(icicle);
@@ -73,33 +75,32 @@ public class wpAndroid extends ListActivity {
 		// verify that the user has accepted the EULA
 		boolean eula = checkEULA();
 		if (eula == false) {
+			AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(
+					wpAndroid.this);
+			dialogBuilder.setTitle(R.string.eula);
+			dialogBuilder.setMessage(R.string.eula_content);
+			dialogBuilder.setPositiveButton(R.string.accept,
+					new DialogInterface.OnClickListener() {
+						public void onClick(DialogInterface dialog,
+								int whichButton) {
+							// User clicked Accept so set that they've agreed to
+							// the eula.
+							WordPressDB eulaDB = new WordPressDB(wpAndroid.this);
+							eulaDB.setEULA(wpAndroid.this);
+							displayAccounts();
 
-			DialogInterface.OnClickListener positiveListener =
-				new DialogInterface.OnClickListener() {
-					public void onClick(DialogInterface dialog, int whichButton) {
-						// User clicked Accept so set that they've agreed to
-						// the eula.
-						WordPressDB eulaDB = new WordPressDB(wpAndroid.this);
-						eulaDB.setEULA(wpAndroid.this);
-						displayAccounts();
-					}
-				};
-
-			DialogInterface.OnClickListener negativeListener = 
-				new DialogInterface.OnClickListener() {
-					public void onClick(DialogInterface dialog, int whichButton) {
-						finish(); // goodbye!
-					}
-				};
-
-			AlertUtil.showAlert(wpAndroid.this, R.string.eula, R.string.eula_content,
-					getString(R.string.accept), positiveListener,
-					getString(R.string.decline), negativeListener);
+						}
+					});
+			dialogBuilder.setNegativeButton(R.string.decline,
+					new DialogInterface.OnClickListener() {
+						public void onClick(DialogInterface dialog,
+								int whichButton) {
+							finish(); // goodbye!
+						}
+					});
+			dialogBuilder.setCancelable(false);
+			dialogBuilder.create().show();
 		} else {
-			Bundle extras = getIntent().getExtras();
-			if(extras!=null) {
-				default_blog = extras.getInt("default_blog");
-			}
 			displayAccounts();
 		}
 	}
@@ -121,6 +122,26 @@ public class wpAndroid extends ListActivity {
 		WordPressDB settingsDB = new WordPressDB(this);
 		accounts = settingsDB.getAccounts(this);
 
+		final int readerBlogID = settingsDB.getWPCOMBlogID(this);
+		Button readerButton = (Button) findViewById(R.id.readerButton);
+		if (readerBlogID >= 0) {
+		    readerButton.setOnClickListener(new Button.OnClickListener() {
+                public void onClick(View v) {
+                    Bundle bundle = new Bundle();
+                    bundle.putString("id", String.valueOf(readerBlogID));
+                    bundle.putBoolean("loadReader", true);
+                    Intent webViewIntent = new Intent(wpAndroid.this,
+                            viewPost.class);
+                    webViewIntent.putExtras(bundle);
+                    startActivity(webViewIntent);
+                    
+                }
+            });
+		}
+		else {
+		    readerButton.setVisibility(View.GONE);
+		}
+		
 		// upload stats
 		checkStats(accounts.size());
 
@@ -138,12 +159,10 @@ public class wpAndroid extends ListActivity {
 			public void onItemClick(AdapterView<?> arg0, View row,
 					int position, long id) {
 				Bundle bundle = new Bundle();
-				bundle.putString("accountName", EscapeUtils.unescapeHtml(blogNames[default_blog]));
-				bundle.putString("id", String.valueOf(row.getId()));				
-				bundle.putString("blavatar",blavatars[default_blog]);
-				bundle.putInt("default_blog", default_blog);
+				bundle.putString("accountName", escapeUtils.unescapeHtml(blogNames[position]));
+				bundle.putString("id", String.valueOf(row.getId()));
 				Intent viewPostsIntent = new Intent(wpAndroid.this,
-						Dashboard.class);
+						tabView.class);
 				viewPostsIntent.putExtras(bundle);
 				startActivityForResult(viewPostsIntent, 1);
 
@@ -207,9 +226,10 @@ public class wpAndroid extends ListActivity {
 					String[] urlSplit = url.split("/");
 					url = urlSplit[0];
 					url = "http://gravatar.com/blavatar/"
-							+ ViewComments.getMd5Hash(url.trim())
+							+ moderateCommentsTab.getMd5Hash(url.trim())
 							+ "?s=60&d=404";
 					blavatars[validBlogCtr] = url;
+					accountNames.add(validBlogCtr, blogNames[i]);
 					validBlogCtr++;
 				}
 			}
@@ -218,15 +238,15 @@ public class wpAndroid extends ListActivity {
 				accounts = settingsDB.getAccounts(this);
 			}
 
-			/*ThumbnailBus bus = new ThumbnailBus();
+			ThumbnailBus bus = new ThumbnailBus();
 			thumbs = new ThumbnailAdapter(this, new HomeListAdapter(this),
 					new SimpleWebImageCache<ThumbnailBus, ThumbnailMessage>(
 							null, null, 101, bus), IMAGE_IDS);
 
 			setListAdapter(thumbs);
-			*/
+			
 			//start the comment service (it will kill itself if no blogs want notifications)
-			Intent intent = new Intent(wpAndroid.this, CommentBroadcastReceiver.class);
+			Intent intent = new Intent(wpAndroid.this, broadcastReceiver.class);
         	PendingIntent pIntent = PendingIntent.getBroadcast(wpAndroid.this, 0, intent, 0);
         	
         	AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
@@ -266,25 +286,11 @@ public class wpAndroid extends ListActivity {
 			
 		} else {
 			// no account, load new account view
-			Intent i = new Intent(wpAndroid.this, NewAccount.class);
+			Intent i = new Intent(wpAndroid.this, newAccount.class);
 
 			startActivityForResult(i, 0);
 
 		}
-        
-      /*  new Handler().postDelayed(new Runnable(){ 
-            public void run() { 
-            	Bundle bundle = new Bundle();
-				bundle.putString("accountName", EscapeUtils.unescapeHtml(blogNames[default_blog]));
-				bundle.putInt("id", default_blog+1);				
-				bundle.putString("blavatar",blavatars[default_blog]);
-				bundle.putInt("default_blog", default_blog); 
-                Intent mainIntent = new Intent(wpAndroid.this,Dashboard.class);
-				mainIntent.putExtras(bundle);
-				startActivityForResult(mainIntent, 1); 
-                wpAndroid.this.finish(); 
-            } 
-       },1000);*/
 	}
 
 	private void checkStats(final int numBlogs) {
@@ -430,7 +436,7 @@ public class wpAndroid extends ListActivity {
 	public boolean onOptionsItemSelected(final MenuItem item) {
 		switch (item.getItemId()) {
 		case 0:
-			Intent i = new Intent(this, NewAccount.class);
+			Intent i = new Intent(this, newAccount.class);
 
 			startActivityForResult(i, 0);
 
@@ -439,7 +445,7 @@ public class wpAndroid extends ListActivity {
 			Intent i2 = new Intent(this, Preferences.class);
 
 			startActivity(i2);
-			finish();
+
 			return true;
 		}
 		return false;
@@ -474,28 +480,65 @@ public class wpAndroid extends ListActivity {
 		/* Switch on the ID of the item, to get what the user selected. */
 		switch (item.getItemId()) {
 		case 0:
-			DialogInterface.OnClickListener positiveListener =
-				new DialogInterface.OnClickListener() {
-					public void onClick(DialogInterface dialog, int whichButton) {
-						// remove the account
-						WordPressDB settingsDB = new WordPressDB(wpAndroid.this);
-						boolean deleteSuccess = settingsDB.deleteAccount(
-								wpAndroid.this, selectedID);
-						if (deleteSuccess) {
-							Toast.makeText(wpAndroid.this, getResources().getText(
-											R.string.account_removed_successfully),
-										Toast.LENGTH_SHORT).show();
-							displayAccounts();
-						} else {
-							AlertUtil.showAlert(wpAndroid.this, R.string.error, R.string.error);
-						}
-					}
-				};
+			AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(
+					wpAndroid.this);
+			dialogBuilder.setTitle(getResources().getText(
+					R.string.remove_account));
+			dialogBuilder.setMessage(getResources().getText(
+					R.string.sure_to_remove_account));
+			dialogBuilder.setPositiveButton(getResources()
+					.getText(R.string.yes),
+					new DialogInterface.OnClickListener() {
+						public void onClick(DialogInterface dialog,
+								int whichButton) {
+							// remove the account
+							WordPressDB settingsDB = new WordPressDB(
+									wpAndroid.this);
+							boolean deleteSuccess = settingsDB.deleteAccount(
+									wpAndroid.this, selectedID);
+							if (deleteSuccess) {
+								Toast
+										.makeText(
+												wpAndroid.this,
+												getResources()
+														.getText(
+																R.string.account_removed_successfully),
+												Toast.LENGTH_SHORT).show();
+								displayAccounts();
+							} else {
+								AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(
+										wpAndroid.this);
+								dialogBuilder.setTitle(getResources().getText(
+										R.string.error));
+								dialogBuilder
+										.setMessage(getResources()
+												.getText(
+														R.string.could_not_remove_account));
+								dialogBuilder.setPositiveButton("OK",
+										new DialogInterface.OnClickListener() {
+											public void onClick(
+													DialogInterface dialog,
+													int whichButton) {
+												// just close the dialog
+											}
+										});
+								dialogBuilder.setCancelable(true);
+								dialogBuilder.create().show();
+							}
 
-			AlertUtil.showAlert(wpAndroid.this, R.string.remove_account,
-					R.string.sure_to_remove_account,
-					getString(R.string.yes), positiveListener,
-					getString(R.string.no), null);
+						}
+					});
+			dialogBuilder.setNegativeButton(
+					getResources().getText(R.string.no),
+					new DialogInterface.OnClickListener() {
+						public void onClick(DialogInterface dialog,
+								int whichButton) {
+							// Just close the window.
+
+						}
+					});
+			dialogBuilder.setCancelable(false);
+			dialogBuilder.create().show();
 
 			return true;
 		}
@@ -519,7 +562,7 @@ public class wpAndroid extends ListActivity {
 			return position;
 		}
 
-		public View getView(int position, View convertView, ViewGroup parent) {			
+		public View getView(int position, View convertView, ViewGroup parent) {
 			View pv = convertView;
 			ViewWrapper wrapper = null;
 			if (pv == null) {
@@ -546,9 +589,9 @@ public class wpAndroid extends ListActivity {
 			}
 
 			wrapper.getBlogName().setText(
-					EscapeUtils.unescapeHtml(blogNames[position]));
+					escapeUtils.unescapeHtml(blogNames[position]));
 			wrapper.getBlogUsername().setText(
-					EscapeUtils.unescapeHtml(username));
+					escapeUtils.unescapeHtml(username));
 
 			if (wrapper.getBlavatar() != null) {
 				try {
