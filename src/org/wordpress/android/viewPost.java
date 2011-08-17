@@ -9,6 +9,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.params.HttpProtocolParams;
 import org.apache.http.protocol.HTTP;
 import org.xmlrpc.android.XMLRPCClient;
 import org.xmlrpc.android.XMLRPCException;
@@ -99,6 +100,7 @@ public class viewPost extends Activity {
                             // refresh stat
                             try {
                                 HttpClient httpclient = new DefaultHttpClient();
+                                HttpProtocolParams.setUserAgent(httpclient.getParams(), "wp-android");
                                 HttpResponse response = httpclient
                                         .execute(new HttpGet(
                                                 "http://wordpress.com/reader/mobile/?template=stats&stats_name=home_page_refresh"));
@@ -202,8 +204,6 @@ public class viewPost extends Activity {
             if (permaLink != null) {
                 WebView wv = (WebView) findViewById(R.id.webView);
                 wv.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
-                // pretend we're a desktop browser
-                // wv.getSettings().setUserAgentString("Mozilla/5.0 (Linux) AppleWebKit/530.17 (KHTML, like Gecko) Version/4.0 Safari/530.17");
                 wv.getSettings().setBuiltInZoomControls(true);
                 wv.getSettings().setJavaScriptEnabled(true);
 
@@ -312,6 +312,7 @@ public class viewPost extends Activity {
                     try {
                         // load stat
                         HttpClient httpclient = new DefaultHttpClient();
+                        HttpProtocolParams.setUserAgent(httpclient.getParams(), "wp-android");
                         HttpResponse response = httpclient
                                 .execute(new HttpGet(
                                         "http://wordpress.com/reader/mobile/?template=stats&stats_name=home_page"));
@@ -368,6 +369,7 @@ public class viewPost extends Activity {
                   }
                 });
 
+                wv.getSettings().setUserAgentString("wp-android");
                 wv.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
                 wv.getSettings().setSavePassword(false);
                 wv.getSettings().setBuiltInZoomControls(true);
