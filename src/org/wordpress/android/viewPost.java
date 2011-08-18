@@ -346,7 +346,7 @@ public class viewPost extends Activity {
                         + "\" /></label>"
                         + "<input type=\"submit\" name=\"wp-submit\" id=\"wp-submit\" value=\"Log In\" />"
                         + "<input type=\"hidden\" name=\"redirect_to\" value=\""
-                        + "http://wordpress.com/reader/mobile" + "\" />"
+                        + "http://wordpress.com/reader/mobile?preload=false" + "\" />"
                         + "</form>"
                         + "</body>";
 
