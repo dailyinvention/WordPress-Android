@@ -146,11 +146,6 @@ public class wpAndroid extends ListActivity {
 		checkStats(accounts.size());
 
 		ListView listView = (ListView) findViewById(android.R.id.list);
-
-		ImageView iv = new ImageView(this);
-		iv.setBackgroundDrawable(getResources().getDrawable(
-				R.drawable.list_divider));
-		listView.addFooterView(iv);
 		listView.setVerticalFadingEdgeEnabled(false);
 		listView.setVerticalScrollBarEnabled(true);
 
