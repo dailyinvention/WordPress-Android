@@ -20,6 +20,7 @@ import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.graphics.PixelFormat;
 import android.net.Uri;
 import android.net.http.SslError;
 import android.os.AsyncTask;
@@ -28,6 +29,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
+import android.view.WindowManager;
 import android.webkit.HttpAuthHandler;
 import android.webkit.SslErrorHandler;
 import android.webkit.WebChromeClient;
@@ -36,6 +38,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 public class viewPost extends Activity {
@@ -57,6 +60,8 @@ public class viewPost extends Activity {
     @Override
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
+        getWindow().setFormat(PixelFormat.RGBA_8888);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_DITHER);
         requestWindowFeature(Window.FEATURE_PROGRESS);
         setContentView(R.layout.viewpost);
 
@@ -115,6 +120,8 @@ public class viewPost extends Activity {
             new loadReaderTask().execute(null, null, null, null);
 
         } else {
+            RelativeLayout navBar = (RelativeLayout) findViewById(R.id.navBar);
+            navBar.setVisibility(View.GONE);
             if (isPage) {
                 this.setTitle(escapeUtils.unescapeHtml(accountName) + " - "
                         + getResources().getText(R.string.preview_page));

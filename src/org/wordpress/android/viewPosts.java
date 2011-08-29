@@ -74,9 +74,10 @@ import android.widget.ViewSwitcher;
 public class viewPosts extends ListActivity {
 	/** Called when the activity is first created. */
 	private XMLRPCClient client;
-	private String[] postIDs, titles, dateCreated, dateCreatedFormatted, draftIDs, draftTitles, publish;
+	private String[] postIDs, titles, dateCreated, dateCreatedFormatted,
+			draftIDs, draftTitles, publish;
 	private Integer[] uploaded;
-	private String id = "",accountName = "", newID = "", selectedID = "";
+	private String id = "", accountName = "", newID = "", selectedID = "";
 	int rowID = 0;
 	private int ID_DIALOG_DELETING = 1, ID_DIALOG_POSTING = 2;
 	Vector<String> selectedCategories = new Vector<String>();
@@ -301,13 +302,15 @@ public class viewPosts extends ListActivity {
 									.toString();
 						} else {
 							rTitles[ctr] = escapeUtils.unescapeHtml(contentHash
-									.get("content").toString().substring(
+									.get("content")
+									.toString()
+									.substring(
 											contentHash.get("content")
-													.toString().indexOf(
-															"<title>") + 7,
+													.toString()
+													.indexOf("<title>") + 7,
 											contentHash.get("content")
-													.toString().indexOf(
-															"</title>")));
+													.toString()
+													.indexOf("</title>")));
 							rPostIDs[ctr] = contentHash.get("postid")
 									.toString();
 							rDateCreated[ctr] = contentHash.get("dateCreated")
@@ -325,7 +328,7 @@ public class viewPosts extends ListActivity {
 							rDateCreatedFormatted[ctr] = sdfOut.format(d);
 						} catch (ParseException pe) {
 							pe.printStackTrace();
-							rDateCreatedFormatted[ctr] = rDateCreated[ctr]; 
+							rDateCreatedFormatted[ctr] = rDateCreated[ctr];
 						}
 
 						dbValues.put("blogID", id);
@@ -448,7 +451,8 @@ public class viewPosts extends ListActivity {
 			dateCreated = (String[]) newDateList.toArray(new String[newDateList
 					.size()]);
 
-			List<String> dateFormattedList = Arrays.asList(dateCreatedFormatted);
+			List<String> dateFormattedList = Arrays
+					.asList(dateCreatedFormatted);
 			List<String> newDateFormattedList = new ArrayList<String>();
 			newDateFormattedList.add("postsHeader");
 			newDateFormattedList.addAll(dateFormattedList);
@@ -478,7 +482,8 @@ public class viewPosts extends ListActivity {
 			List<String> newPublishList = new ArrayList<String>();
 			newPublishList.add("draftsHeader");
 			newPublishList.addAll(publishList);
-			publish = (String[]) newPublishList.toArray(new String[newPublishList.size()]);
+			publish = (String[]) newPublishList
+					.toArray(new String[newPublishList.size()]);
 
 			postIDs = StringHelper.mergeStringArrays(draftIDs, postIDs);
 			titles = StringHelper.mergeStringArrays(draftTitles, titles);
@@ -520,67 +525,126 @@ public class viewPosts extends ListActivity {
 
 				});
 
-				listView
-						.setOnCreateContextMenuListener(new OnCreateContextMenuListener() {
+				listView.setOnCreateContextMenuListener(new OnCreateContextMenuListener() {
 
-							public void onCreateContextMenu(ContextMenu menu,
-									View v, ContextMenuInfo menuInfo) {
-								AdapterView.AdapterContextMenuInfo info;
-								try {
-									info = (AdapterView.AdapterContextMenuInfo) menuInfo;
-								} catch (ClassCastException e) {
-									// Log.e(TAG, "bad menuInfo", e);
-									return;
-								}
+					public void onCreateContextMenu(ContextMenu menu, View v,
+							ContextMenuInfo menuInfo) {
+						AdapterView.AdapterContextMenuInfo info;
+						try {
+							info = (AdapterView.AdapterContextMenuInfo) menuInfo;
+						} catch (ClassCastException e) {
+							// Log.e(TAG, "bad menuInfo", e);
+							return;
+						}
 
-								
-								Object[] args = { R.id.row_post_id };
-								
-								try {
-									Method m = android.view.View.class.getMethod("getTag");
-									m.invoke(selectedID, args);
-								}
-								 catch (NoSuchMethodException e) {
-									 	selectedID = String.valueOf(info.targetView.getId()); 
-									} catch (IllegalArgumentException e) {
-									 	selectedID = String.valueOf(info.targetView.getId()); 
-									} catch (IllegalAccessException e) {
-									 	selectedID = String.valueOf(info.targetView.getId()); 
-									} catch (InvocationTargetException e) {
-									 	selectedID = String.valueOf(info.targetView.getId()); 
-									}
-								//selectedID = (String) info.targetView.getTag(R.id.row_post_id);
-								rowID = info.position;
+						Object[] args = { R.id.row_post_id };
 
-								if (totalDrafts > 0 && rowID <= totalDrafts
-										&& rowID != 0) {
-									menu.clear();
-									menu.setHeaderTitle(getResources().getText(R.string.draft_actions));
-									menu.add(1, 0, 0, getResources().getText(R.string.edit_draft));
-									menu.add(1, 1, 0, getResources().getText(R.string.upload));
-									menu.add(1, 2, 0, getResources().getText(R.string.delete_draft));
-								} else if (rowID == 1
-										|| ((rowID != (totalDrafts + 1)) && rowID != 0)) {
-									menu.clear();
+						try {
+							Method m = android.view.View.class
+									.getMethod("getTag");
+							m.invoke(selectedID, args);
+						} catch (NoSuchMethodException e) {
+							selectedID = String.valueOf(info.targetView.getId());
+						} catch (IllegalArgumentException e) {
+							selectedID = String.valueOf(info.targetView.getId());
+						} catch (IllegalAccessException e) {
+							selectedID = String.valueOf(info.targetView.getId());
+						} catch (InvocationTargetException e) {
+							selectedID = String.valueOf(info.targetView.getId());
+						}
+						// selectedID = (String)
+						// info.targetView.getTag(R.id.row_post_id);
+						rowID = info.position;
 
-									if (isPage) {
-										menu.setHeaderTitle(getResources().getText(R.string.page_actions));
-										menu.add(2,0,0,getResources().getText(R.string.preview_page));
-										menu.add(2,1,0,getResources().getText(R.string.view_comments));
-										menu.add(2, 2, 0, getResources().getText(R.string.edit_page));
-										menu.add(2, 3, 0, getResources().getText(R.string.delete_page));
-										menu.add(2, 4, 0, getResources().getText(R.string.share_url));
-									} else {
-										menu.setHeaderTitle(getResources().getText(R.string.post_actions));
-										menu.add(0,0,0,getResources().getText(R.string.preview_post));
-										menu.add(0,1,0,getResources().getText(R.string.view_comments));
-										menu.add(0, 2, 0, getResources().getText(R.string.edit_post));
-										menu.add(0, 3, 0, getResources().getText(R.string.delete_post));
-										menu.add(0, 4, 0, getResources().getText(R.string.share_url));
-									}
-								}
+						if (totalDrafts > 0 && rowID <= totalDrafts
+								&& rowID != 0) {
+							menu.clear();
+							menu.setHeaderTitle(getResources().getText(
+									R.string.draft_actions));
+							menu.add(1, 0, 0,
+									getResources().getText(R.string.edit_draft));
+							menu.add(1, 1, 0,
+									getResources().getText(R.string.upload));
+							menu.add(
+									1,
+									2,
+									0,
+									getResources().getText(
+											R.string.delete_draft));
+						} else if (rowID == 1
+								|| ((rowID != (totalDrafts + 1)) && rowID != 0)) {
+							menu.clear();
+
+							if (isPage) {
+								menu.setHeaderTitle(getResources().getText(
+										R.string.page_actions));
+								menu.add(
+										2,
+										0,
+										0,
+										getResources().getText(
+												R.string.preview_page));
+								menu.add(
+										2,
+										1,
+										0,
+										getResources().getText(
+												R.string.view_comments));
+								menu.add(
+										2,
+										2,
+										0,
+										getResources().getText(
+												R.string.edit_page));
+								menu.add(
+										2,
+										3,
+										0,
+										getResources().getText(
+												R.string.delete_page));
+								menu.add(
+										2,
+										4,
+										0,
+										getResources().getText(
+												R.string.share_url));
+							} else {
+								menu.setHeaderTitle(getResources().getText(
+										R.string.post_actions));
+								menu.add(
+										0,
+										0,
+										0,
+										getResources().getText(
+												R.string.preview_post));
+								menu.add(
+										0,
+										1,
+										0,
+										getResources().getText(
+												R.string.view_comments));
+								menu.add(
+										0,
+										2,
+										0,
+										getResources().getText(
+												R.string.edit_post));
+								menu.add(
+										0,
+										3,
+										0,
+										getResources().getText(
+												R.string.delete_post));
+								menu.add(
+										0,
+										4,
+										0,
+										getResources().getText(
+												R.string.share_url));
 							}
-						});
+						}
+					}
+				});
 			}
 			return true;
 		} else {
@@ -634,10 +698,9 @@ public class viewPosts extends ListActivity {
 				draftIDs[i] = contentHash.get("id").toString();
 				draftTitles[i] = escapeUtils.unescapeHtml(contentHash.get(
 						"title").toString());
-				if (contentHash.get("status") != null){
+				if (contentHash.get("status") != null) {
 					publish[i] = contentHash.get("status").toString();
-				}
-				else {
+				} else {
 					publish[i] = "";
 				}
 				uploaded[i] = (Integer) contentHash.get("uploaded");
@@ -651,7 +714,6 @@ public class viewPosts extends ListActivity {
 	}
 
 	private class PostListAdapter extends BaseAdapter {
-		
 
 		public PostListAdapter(Context context) {
 		}
@@ -676,7 +738,7 @@ public class viewPosts extends ListActivity {
 				pv = inflater.inflate(R.layout.row_post_page, parent, false);
 				wrapper = new ViewWrapper(pv);
 				if (position == 0) {
-					//dateHeight = wrapper.getDate().getHeight();
+					// dateHeight = wrapper.getDate().getHeight();
 				}
 				pv.setTag(wrapper);
 				wrapper = new ViewWrapper(pv);
@@ -726,10 +788,10 @@ public class viewPosts extends ListActivity {
 				wrapper.getDate().setTextColor(Color.parseColor("#888888"));
 
 				Object[] args = { R.id.row_post_id, postIDs[position] };
-				
+
 				try {
-				    Method m = android.view.View.class.getMethod("setTag");
-				    m.invoke(pv, args);
+					Method m = android.view.View.class.getMethod("setTag");
+					m.invoke(pv, args);
 				} catch (NoSuchMethodException e) {
 					pv.setId(Integer.valueOf(postIDs[position]));
 				} catch (IllegalArgumentException e) {
@@ -739,10 +801,10 @@ public class viewPosts extends ListActivity {
 				} catch (InvocationTargetException e) {
 					pv.setId(Integer.valueOf(postIDs[position]));
 				}
-				
-				//pv.setId(Integer.valueOf(postIDs[position]));
-				//pv.setTag(R.id.row_post_id, postIDs[position]);
-				
+
+				// pv.setId(Integer.valueOf(postIDs[position]));
+				// pv.setTag(R.id.row_post_id, postIDs[position]);
+
 				if (wrapper.getDate().getHeight() == 0) {
 					wrapper.getDate().setHeight(
 							(int) wrapper.getTitle().getTextSize()
@@ -751,15 +813,17 @@ public class viewPosts extends ListActivity {
 				String customDate = date;
 
 				if (customDate.equals("draft")) {
-					customDate = getResources().getText(R.string.draft).toString();
+					customDate = getResources().getText(R.string.draft)
+							.toString();
 				} else if (customDate.equals("pending")) {
-					customDate = getResources().getText(R.string.pending_review).toString();
-				}
-				else if (customDate.equals("private")) {
-					customDate = getResources().getText(R.string.post_private).toString();
-				}
-				else if (customDate.equals("publish")) {
-					customDate = getResources().getText(R.string.publish_post).toString();
+					customDate = getResources()
+							.getText(R.string.pending_review).toString();
+				} else if (customDate.equals("private")) {
+					customDate = getResources().getText(R.string.post_private)
+							.toString();
+				} else if (customDate.equals("publish")) {
+					customDate = getResources().getText(R.string.publish_post)
+							.toString();
 					wrapper.getDate().setTextColor(Color.parseColor("#006505"));
 				}
 				date = customDate;
@@ -983,25 +1047,29 @@ public class viewPosts extends ListActivity {
 				dialogBuilder.setMessage(getResources().getText(
 						R.string.delete_sure_post)
 						+ " '" + titles[rowID] + "'?");
-				dialogBuilder.setPositiveButton(getResources().getText(
-						R.string.yes), new DialogInterface.OnClickListener() {
-					public void onClick(DialogInterface dialog, int whichButton) {
-						showDialog(ID_DIALOG_DELETING);
-						new Thread() {
-							public void run() {
-								deletePost();
+				dialogBuilder.setPositiveButton(
+						getResources().getText(R.string.yes),
+						new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog,
+									int whichButton) {
+								showDialog(ID_DIALOG_DELETING);
+								new Thread() {
+									public void run() {
+										deletePost();
+									}
+								}.start();
+
 							}
-						}.start();
+						});
+				dialogBuilder.setNegativeButton(
+						getResources().getText(R.string.no),
+						new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog,
+									int whichButton) {
+								// Just close the window.
 
-					}
-				});
-				dialogBuilder.setNegativeButton(getResources().getText(
-						R.string.no), new DialogInterface.OnClickListener() {
-					public void onClick(DialogInterface dialog, int whichButton) {
-						// Just close the window.
-
-					}
-				});
+							}
+						});
 				dialogBuilder.setCancelable(true);
 				if (!isFinishing()) {
 					dialogBuilder.create().show();
@@ -1009,13 +1077,16 @@ public class viewPosts extends ListActivity {
 
 				return true;
 			case 4:
-				loadingDialog = ProgressDialog.show(this, getResources().getText(R.string.share_url), getResources().getText(R.string.attempting_fetch_url), true, false);				
-				Thread action = new Thread() { 
-				  public void run() {
-					  Looper.prepare();
-					  shareURL(id, String.valueOf(selectedID), false);
-					  Looper.loop();
-				  } 
+				loadingDialog = ProgressDialog.show(this, getResources()
+						.getText(R.string.share_url),
+						getResources().getText(R.string.attempting_fetch_url),
+						true, false);
+				Thread action = new Thread() {
+					public void run() {
+						Looper.prepare();
+						shareURL(id, String.valueOf(selectedID), false);
+						Looper.loop();
+					}
 				};
 				action.start();
 				return true;
@@ -1054,37 +1125,44 @@ public class viewPosts extends ListActivity {
 				dialogBuilder.setMessage(getResources().getText(
 						R.string.delete_sure_page)
 						+ " '" + titles[rowID] + "'?");
-				dialogBuilder.setPositiveButton(getResources().getText(
-						R.string.yes), new DialogInterface.OnClickListener() {
-					public void onClick(DialogInterface dialog, int whichButton) {
-						showDialog(ID_DIALOG_DELETING);
-						new Thread() {
-							public void run() {
-								deletePost();
+				dialogBuilder.setPositiveButton(
+						getResources().getText(R.string.yes),
+						new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog,
+									int whichButton) {
+								showDialog(ID_DIALOG_DELETING);
+								new Thread() {
+									public void run() {
+										deletePost();
+									}
+								}.start();
 							}
-						}.start();
-					}
-				});
-				dialogBuilder.setNegativeButton(getResources().getText(
-						R.string.no), new DialogInterface.OnClickListener() {
-					public void onClick(DialogInterface dialog, int whichButton) {
-						// Just close the window.
+						});
+				dialogBuilder.setNegativeButton(
+						getResources().getText(R.string.no),
+						new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog,
+									int whichButton) {
+								// Just close the window.
 
-					}
-				});
+							}
+						});
 				dialogBuilder.setCancelable(true);
 				if (!isFinishing()) {
 					dialogBuilder.create().show();
 				}
 				return true;
 			case 4:
-				loadingDialog = ProgressDialog.show(this, getResources().getText(R.string.share_url), getResources().getText(R.string.attempting_fetch_url), true, false);				
-				Thread action = new Thread() { 
-				  public void run() {
-					  Looper.prepare();
-					  shareURL(id, String.valueOf(selectedID), true);
-					  Looper.loop();
-				  } 
+				loadingDialog = ProgressDialog.show(this, getResources()
+						.getText(R.string.share_url),
+						getResources().getText(R.string.attempting_fetch_url),
+						true, false);
+				Thread action = new Thread() {
+					public void run() {
+						Looper.prepare();
+						shareURL(id, String.valueOf(selectedID), true);
+						Looper.loop();
+					}
 				};
 				action.start();
 				return true;
@@ -1127,28 +1205,33 @@ public class viewPosts extends ListActivity {
 				dialogBuilder.setMessage(getResources().getText(
 						R.string.delete_sure)
 						+ " '" + titles[rowID] + "'?");
-				dialogBuilder.setPositiveButton(getResources().getText(
-						R.string.yes), new DialogInterface.OnClickListener() {
-					public void onClick(DialogInterface dialog, int whichButton) {
-						WordPressDB lDraftsDB = new WordPressDB(viewPosts.this);
-						if (isPage) {
-							lDraftsDB.deletePageDraft(viewPosts.this, String
-									.valueOf(selectedID));
-						} else {
-							lDraftsDB.deletePost(viewPosts.this, String
-									.valueOf(selectedID));
-						}
-						loadPosts(false);
+				dialogBuilder.setPositiveButton(
+						getResources().getText(R.string.yes),
+						new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog,
+									int whichButton) {
+								WordPressDB lDraftsDB = new WordPressDB(
+										viewPosts.this);
+								if (isPage) {
+									lDraftsDB.deletePageDraft(viewPosts.this,
+											String.valueOf(selectedID));
+								} else {
+									lDraftsDB.deletePost(viewPosts.this,
+											String.valueOf(selectedID));
+								}
+								loadPosts(false);
 
-					}
-				});
-				dialogBuilder.setNegativeButton(getResources().getText(
-						R.string.no), new DialogInterface.OnClickListener() {
-					public void onClick(DialogInterface dialog, int whichButton) {
-						// Just close the window.
+							}
+						});
+				dialogBuilder.setNegativeButton(
+						getResources().getText(R.string.no),
+						new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog,
+									int whichButton) {
+								// Just close the window.
 
-					}
-				});
+							}
+						});
 				dialogBuilder.setCancelable(true);
 				if (!isFinishing()) {
 					dialogBuilder.create().show();
@@ -1183,10 +1266,9 @@ public class viewPosts extends ListActivity {
 		Object[] postParams = { "", selPostID, sUsername, sPassword };
 		Object[] pageParams = { sBlogId, sUsername, sPassword, selPostID };
 
-		
 		try {
-			client.call((isPage) ? "wp.deletePage"
-					: "blogger.deletePost", (isPage) ? pageParams : postParams);
+			client.call((isPage) ? "wp.deletePage" : "blogger.deletePost",
+					(isPage) ? pageParams : postParams);
 			dismissDialog(ID_DIALOG_DELETING);
 			Thread action = new Thread() {
 				public void run() {
@@ -1276,7 +1358,7 @@ public class viewPosts extends ListActivity {
 		String content = StringHelper.convertHTMLTagsForUpload(postHashMap.get(
 				"content").toString());
 		String password = null;
-		if(postHashMap.get("password") != null)
+		if (postHashMap.get("password") != null)
 			password = postHashMap.get("password").toString();
 		String picturePaths = postHashMap.get("picturePaths").toString();
 
@@ -1309,7 +1391,7 @@ public class viewPosts extends ListActivity {
 
 		}
 		String status = "publish";
-		if (postHashMap.get("status") != null){
+		if (postHashMap.get("status") != null) {
 			status = postHashMap.get("status").toString();
 		}
 
@@ -1375,13 +1457,14 @@ public class viewPosts extends ListActivity {
 
 			if (!isPage) {
 				// add the tagline
-				HashMap<?, ?> globalSettings = settingsDB.getNotificationOptions(this);
+				HashMap<?, ?> globalSettings = settingsDB
+						.getNotificationOptions(this);
 				boolean taglineValue = false;
 				String tagline = "";
 
 				if (globalSettings != null) {
-					if (globalSettings.get("tagline_flag").toString().equals(
-							"1")) {
+					if (globalSettings.get("tagline_flag").toString()
+							.equals("1")) {
 						taglineValue = true;
 					}
 
@@ -1397,11 +1480,12 @@ public class viewPosts extends ListActivity {
 
 			contentStruct.put("post_type", (isPage) ? "page" : "post");
 			contentStruct.put("title", title);
-			long pubDate = Long.parseLong(postHashMap.get("pubDate").toString());
-	    	if (pubDate != 0){
-	    		Date date = new Date(pubDate);
-	    		contentStruct.put("date_created_gmt", date);
-	    	}
+			long pubDate = Long
+					.parseLong(postHashMap.get("pubDate").toString());
+			if (pubDate != 0) {
+				Date date = new Date(pubDate);
+				contentStruct.put("date_created_gmt", date);
+			}
 			// for trac #53, add <p> and <br /> tags
 			content = content.replace("/\n\n/g", "</p><p>");
 			content = content.replace("/\n/g", "<br />");
@@ -1439,9 +1523,9 @@ public class viewPosts extends ListActivity {
 					contentStruct.put("custom_fields", geo);
 				}
 			}
-			
+
 			client = new XMLRPCClient(sURL, sHttpuser, sHttppassword);
-			if(password != null && !"".equals(password)){
+			if (password != null && !"".equals(password)) {
 				contentStruct.put("wp_password", password);
 			}
 			Object[] params = { sBlogId, sUsername, sPassword, contentStruct,
@@ -1520,9 +1604,15 @@ public class viewPosts extends ListActivity {
 													// post made it, so let's
 													// delete the draft
 													if (isPage) {
-														lDraftsDB.deletePageDraft(viewPosts.this,String.valueOf(selectedID));
+														lDraftsDB
+																.deletePageDraft(
+																		viewPosts.this,
+																		String.valueOf(selectedID));
 													} else {
-														lDraftsDB.deletePost(viewPosts.this,String.valueOf(selectedID));
+														lDraftsDB
+																.deletePost(
+																		viewPosts.this,
+																		String.valueOf(selectedID));
 													}
 													refreshPosts(false);
 												}
@@ -1569,17 +1659,13 @@ public class viewPosts extends ListActivity {
 											// post made it, so let's delete the
 											// draft
 											if (isPage) {
-												lDraftsDB
-														.deletePageDraft(
-																viewPosts.this,
-																String
-																		.valueOf(selectedID));
+												lDraftsDB.deletePageDraft(
+														viewPosts.this,
+														String.valueOf(selectedID));
 											} else {
-												lDraftsDB
-														.deletePost(
-																viewPosts.this,
-																String
-																		.valueOf(selectedID));
+												lDraftsDB.deletePost(
+														viewPosts.this,
+														String.valueOf(selectedID));
 											}
 											refreshPosts(false);
 										}
@@ -1699,7 +1785,7 @@ public class viewPosts extends ListActivity {
 		}
 		String sMaxImageWidth = categoriesVector.get(9).toString();
 
-		//loop for multiple images
+		// loop for multiple images
 
 		for (int it = 0; it < selectedImageCtr; it++) {
 			final int printCtr = it;
@@ -1729,7 +1815,7 @@ public class viewPosts extends ListActivity {
 					String mimeType = "", xRes = "", yRes = "";
 					MediaFile mf = null;
 
-					if (videoUri.toString().contains("content:")) { 
+					if (videoUri.toString().contains("content:")) {
 						String[] projection;
 						Uri imgPath;
 
@@ -1751,7 +1837,7 @@ public class viewPosts extends ListActivity {
 									.getColumnIndex(Video.Media.MIME_TYPE);
 							resolutionColumn = cur
 									.getColumnIndex(Video.Media.RESOLUTION);
-							
+
 							mf = new MediaFile();
 
 							thumbData = cur.getString(dataColumn);
@@ -1819,22 +1905,9 @@ public class viewPosts extends ListActivity {
 					String resultURL = contentHash.get("url").toString();
 					if (contentHash.containsKey("videopress_shortcode")) {
 						resultURL = contentHash.get("videopress_shortcode")
-								.toString()
-								+ "\n";
+								.toString() + "\n";
 					} else {
-						resultURL = "<object classid=\"clsid:02BF25D5-8C17-4B23-BC80-D3488ABDDC6B\" width=\""
-								+ xRes
-								+ "\" height=\""
-								+ (Integer.valueOf(yRes) + 16)
-								+ "\" codebase=\"http://www.apple.com/qtactivex/qtplugin.cab\"><param name=\"scale\" value=\"aspect\"><param name=\"src\" value=\""
-								+ resultURL
-								+ "\" /><param name=\"autoplay\" value=\"false\" /><param name=\"controller\" value=\"true\" /><object type=\"video/quicktime\" data=\""
-								+ resultURL
-								+ "\" width=\""
-								+ xRes
-								+ "\" height=\""
-								+ (Integer.valueOf(yRes) + 16)
-								+ "\"><param name=\"scale\" value=\"aspect\"><param name=\"autoplay\" value=\"false\" /><param name=\"controller\" value=\"true\" /></object></object>\n";
+						resultURL = String.format("<video width=\"%s\" height=\"%s\" controls=\"controls\"><source src=\"%s\" type=\"%s\" /><a href=\"%s\">Click to view video</a>.</video>", xRes, yRes, resultURL, mimeType, resultURL);
 					}
 
 					content = content + resultURL;
@@ -1860,7 +1933,7 @@ public class viewPosts extends ListActivity {
 										Images.Media.DATA,
 										Images.Media.MIME_TYPE,
 										Images.Media.ORIENTATION };
-	
+
 								imgPath = imageUri;
 
 								Cursor cur = this.managedQuery(imgPath,
@@ -1895,10 +1968,10 @@ public class viewPosts extends ListActivity {
 								jpeg = new File(path);
 								mf.setFilePath(path);
 							}
-							
-							//check if the file is now gone! (removed SD card, etc)
-							if (jpeg == null)
-							{
+
+							// check if the file is now gone! (removed SD card,
+							// etc)
+							if (jpeg == null) {
 								xmlrpcError = true;
 								mediaErrorMsg = "Media file not found.";
 								break;
@@ -2138,54 +2211,67 @@ public class viewPosts extends ListActivity {
 
 		loading.setVisibility(View.INVISIBLE);
 	}
-	
+
 	private void shareURL(String accountId, String postId, final boolean isPage) {
 		WordPressDB settingsDB = new WordPressDB(this);
-	    Vector<?> settings = settingsDB.loadSettings(this, accountId);
-	    String errorStr = null;
-	    
+		Vector<?> settings = settingsDB.loadSettings(this, accountId);
+		String errorStr = null;
+
 		String username = settings.get(2).toString();
 		String password = settings.get(3).toString();
 		String httpuser = settings.get(4).toString();
 		String httppassword = settings.get(5).toString();
 		String blogID = settings.get(12).toString();
-		
+
 		String url = settings.get(0).toString();
-		
+
 		client = new XMLRPCClient(url, httpuser, httppassword);
-	    
-	    Object versionResult = new Object();
-	    try {
-	    	if(isPage) {
-	    		Object[] vParams = { blogID, postId, username, password };
-	    		versionResult = (Object) client.call("wp.getPage", vParams);
-	    	} else {
-	    		Object[] vParams = { postId, username, password };
-	    		versionResult = (Object) client.call("metaWeblog.getPost", vParams);
-	    	}
+
+		Object versionResult = new Object();
+		try {
+			if (isPage) {
+				Object[] vParams = { blogID, postId, username, password };
+				versionResult = (Object) client.call("wp.getPage", vParams);
+			} else {
+				Object[] vParams = { postId, username, password };
+				versionResult = (Object) client.call("metaWeblog.getPost",
+						vParams);
+			}
 		} catch (XMLRPCException e) {
 			errorStr = e.getMessage();
 			Log.d("WP", "Error", e);
 		}
-		
-		if (errorStr == null && versionResult != null){
+
+		if (errorStr == null && versionResult != null) {
 			try {
 				HashMap<?, ?> contentHash = (HashMap<?, ?>) versionResult;
-				
-				if((isPage && !"publish".equals(contentHash.get("page_status").toString())) ||
-						(!isPage && !"publish".equals(contentHash.get("post_status").toString()))) {
+
+				if ((isPage && !"publish".equals(contentHash.get("page_status")
+						.toString()))
+						|| (!isPage && !"publish".equals(contentHash.get(
+								"post_status").toString()))) {
 					Thread prompt = new Thread() {
 						public void run() {
-							AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(viewPosts.this);
-							dialogBuilder.setTitle(getResources().getText(R.string.share_url));
-							if(isPage) {
-								dialogBuilder.setMessage(viewPosts.this.getResources().getText(R.string.page_not_published));
+							AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(
+									viewPosts.this);
+							dialogBuilder.setTitle(getResources().getText(
+									R.string.share_url));
+							if (isPage) {
+								dialogBuilder.setMessage(viewPosts.this
+										.getResources().getText(
+												R.string.page_not_published));
 							} else {
-								dialogBuilder.setMessage(viewPosts.this.getResources().getText(R.string.post_not_published));
+								dialogBuilder.setMessage(viewPosts.this
+										.getResources().getText(
+												R.string.post_not_published));
 							}
-							dialogBuilder.setPositiveButton("OK",  new DialogInterface.OnClickListener() {
-								public void onClick(DialogInterface dialog, int whichButton) {}
-							});
+							dialogBuilder.setPositiveButton("OK",
+									new DialogInterface.OnClickListener() {
+										public void onClick(
+												DialogInterface dialog,
+												int whichButton) {
+										}
+									});
 							dialogBuilder.setCancelable(true);
 							dialogBuilder.create().show();
 						}
@@ -2196,31 +2282,38 @@ public class viewPosts extends ListActivity {
 					String shortlink = getShortlinkTagHref(postURL);
 					Intent share = new Intent(Intent.ACTION_SEND);
 					share.setType("text/plain");
-					if(shortlink == null) {
-						share.putExtra(Intent.EXTRA_TEXT, postURL);						
+					if (shortlink == null) {
+						share.putExtra(Intent.EXTRA_TEXT, postURL);
 					} else {
 						share.putExtra(Intent.EXTRA_TEXT, shortlink);
 					}
-					share.putExtra(Intent.EXTRA_SUBJECT, contentHash.get("title").toString());
-					startActivity(Intent.createChooser(share, this.getText(R.string.share_url)));
+					share.putExtra(Intent.EXTRA_SUBJECT,
+							contentHash.get("title").toString());
+					startActivity(Intent.createChooser(share,
+							this.getText(R.string.share_url)));
 				}
 			} catch (Exception e) {
 				errorStr = e.getMessage();
 				Log.d("WP", "Error", e);
 			}
 		}
-		
+
 		loadingDialog.dismiss();
-		if(errorStr != null) {
-			final String fErrorStr = errorStr; 
+		if (errorStr != null) {
+			final String fErrorStr = errorStr;
 			Thread prompt = new Thread() {
 				public void run() {
-					AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(viewPosts.this);
-					dialogBuilder.setTitle(getResources().getText(R.string.connection_error));
+					AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(
+							viewPosts.this);
+					dialogBuilder.setTitle(getResources().getText(
+							R.string.connection_error));
 					dialogBuilder.setMessage(fErrorStr);
-					dialogBuilder.setPositiveButton("OK",  new DialogInterface.OnClickListener() {
-						public void onClick(DialogInterface dialog, int whichButton) {}
-					});
+					dialogBuilder.setPositiveButton("OK",
+							new DialogInterface.OnClickListener() {
+								public void onClick(DialogInterface dialog,
+										int whichButton) {
+								}
+							});
 					dialogBuilder.setCancelable(true);
 					dialogBuilder.create().show();
 				}
@@ -2228,88 +2321,86 @@ public class viewPosts extends ListActivity {
 			this.runOnUiThread(prompt);
 		}
 	}
-	
+
 	private String getShortlinkTagHref(String urlString) {
 		InputStream in = getResponse(urlString);
 
-		if(in != null) {
+		if (in != null) {
 			XmlPullParser parser = Xml.newPullParser();
 			try {
-	            // auto-detect the encoding from the stream
-	            parser.setInput(in, null);
-	            int eventType = parser.getEventType();
-	            while (eventType != XmlPullParser.END_DOCUMENT){
-	                String name = null;
-	                String rel="";
-					String href="";
-	                switch (eventType){
-	                    case XmlPullParser.START_TAG:
-	                        name = parser.getName();
-	                            if (name.equalsIgnoreCase("link")){
-	                            	for (int i = 0; i < parser.getAttributeCount(); i++) {
-	      							  String attrName = parser.getAttributeName(i);
-	      							  String attrValue = parser.getAttributeValue(i);
-	      					           if(attrName.equals("rel")){
-	      					        	   rel = attrValue;
-	      					           } else if(attrName.equals("href")) {
-	      					        	   href = attrValue;
-	      					           }
-	      					        }
-	      							
-	      						  if(rel.equals("shortlink")){
-	      							  return href;
-	      						  }
-	                            }                          
-	                        break;
-	                }
-	                eventType = parser.next();
-	            }
-	        } catch (Exception e) {
-	            e.printStackTrace();
-	            return null;
-	        }
+				// auto-detect the encoding from the stream
+				parser.setInput(in, null);
+				int eventType = parser.getEventType();
+				while (eventType != XmlPullParser.END_DOCUMENT) {
+					String name = null;
+					String rel = "";
+					String href = "";
+					switch (eventType) {
+					case XmlPullParser.START_TAG:
+						name = parser.getName();
+						if (name.equalsIgnoreCase("link")) {
+							for (int i = 0; i < parser.getAttributeCount(); i++) {
+								String attrName = parser.getAttributeName(i);
+								String attrValue = parser.getAttributeValue(i);
+								if (attrName.equals("rel")) {
+									rel = attrValue;
+								} else if (attrName.equals("href")) {
+									href = attrValue;
+								}
+							}
+
+							if (rel.equals("shortlink")) {
+								return href;
+							}
+						}
+						break;
+					}
+					eventType = parser.next();
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+				return null;
+			}
 
 		}
-		return null;  //never found the shortlink tag
+		return null; // never found the shortlink tag
 	}
-	
+
 	private InputStream getResponse(String urlString) {
 		InputStream in = null;
 		int response = -1;
-        
-        URL url = null;
+
+		URL url = null;
 		try {
 			url = new URL(urlString);
 		} catch (MalformedURLException e1) {
 			e1.printStackTrace();
 			return null;
-		} 
-        URLConnection conn = null;
+		}
+		URLConnection conn = null;
 		try {
 			conn = url.openConnection();
 		} catch (IOException e1) {
 			e1.printStackTrace();
 			return null;
 		}
-        
-        try{
-            HttpURLConnection httpConn = (HttpURLConnection) conn;
-            httpConn.setAllowUserInteraction(false);
-            httpConn.setInstanceFollowRedirects(true);
-            httpConn.setRequestMethod("GET");
-            httpConn.addRequestProperty("user-agent", "Mozilla/5.0");
-            httpConn.connect(); 
 
-            response = httpConn.getResponseCode();                 
-            if (response == HttpURLConnection.HTTP_OK) {
-                in = httpConn.getInputStream();                                 
-            }                     
-        }
-        catch (Exception ex)
-        {
-        	ex.printStackTrace();
-            return null;           
-        } 
+		try {
+			HttpURLConnection httpConn = (HttpURLConnection) conn;
+			httpConn.setAllowUserInteraction(false);
+			httpConn.setInstanceFollowRedirects(true);
+			httpConn.setRequestMethod("GET");
+			httpConn.addRequestProperty("user-agent", "Mozilla/5.0");
+			httpConn.connect();
+
+			response = httpConn.getResponseCode();
+			if (response == HttpURLConnection.HTTP_OK) {
+				in = httpConn.getInputStream();
+			}
+		} catch (Exception ex) {
+			ex.printStackTrace();
+			return null;
+		}
 		return in;
 	}
 
