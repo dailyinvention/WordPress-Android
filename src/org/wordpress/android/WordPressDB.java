@@ -107,7 +107,7 @@ public class WordPressDB {
 	
 	private SQLiteDatabase db;
 	
-	protected static final String PASSWORD_SECRET = "makemetopsecretforrelease!";
+	protected static final String PASSWORD_SECRET = "nottherealpasscode";
 
 	public WordPressDB(Context ctx) {
 		db = ctx.openOrCreateDatabase(DATABASE_NAME, 0, null);

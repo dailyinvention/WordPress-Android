@@ -26,7 +26,6 @@ import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Configuration;
 import android.graphics.PixelFormat;
-import android.location.LocationManager;
 import android.os.Bundle;
 import android.telephony.TelephonyManager;
 import android.view.ContextMenu;
@@ -139,7 +138,8 @@ public class wpAndroid extends ListActivity {
             });
 		}
 		else {
-		    readerButton.setVisibility(View.GONE);
+		    LinearLayout readerWrapper = (LinearLayout) findViewById(R.id.readerButtonWrapper);
+		    readerWrapper.setVisibility(View.GONE);
 		}
 		
 		// upload stats
