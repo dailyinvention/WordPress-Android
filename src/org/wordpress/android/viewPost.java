@@ -104,7 +104,7 @@ public class viewPost extends Activity {
 	public boolean onCreateOptionsMenu(Menu menu) {
 		super.onCreateOptionsMenu(menu);
 		if (loadReader) {
-			menu.add(0, 0, 0, getResources().getText(R.string.blogs));
+			menu.add(0, 0, 0, getResources().getText(R.string.home));
 			MenuItem menuItem = menu.findItem(0);
 			menuItem.setIcon(R.drawable.ic_menu_home);
 

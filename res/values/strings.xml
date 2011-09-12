@@ -92,6 +92,7 @@
   <string name="load_settings">Load settings now?</string>
   <string name="immediately">Immediately</string>
   <string name="refresh">Refresh</string>
+  <string name="home">Home</string>
   
   <!--  tab titles -->
   <string name="tab_comments">Comments</string>
