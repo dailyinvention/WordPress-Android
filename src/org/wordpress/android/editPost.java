@@ -106,7 +106,7 @@ public class editPost extends Activity implements LocationListener{
 	public String categoryErrorMsg = "", id = "", accountName = "", postID = "", SD_CARD_TEMP_DIR = "", categories = "", mediaErrorMsg = "";
 	private XMLRPCClient client;
 	private Vector<Uri> selectedImageIDs = new Vector<Uri>();
-	private int selectedImageCtr = 0;
+	private int selectedImageCtr = 0, selectionStart, selectionEnd;
     private int ID_DIALOG_POSTING = 1, ID_DIALOG_LOADING = 2, ID_DIALOG_DATE = 3, ID_DIALOG_TIME = 4;
     public String newID, imgHTML, sMaxImageWidth, sImagePlacement;
     public Boolean localDraft = false, centerThumbnail = false, xmlrpcError = false, isPage = false, isNew = false, 
@@ -730,11 +730,11 @@ public class editPost extends Activity implements LocationListener{
                 	
                 	TextView contentText = (TextView) findViewById(R.id.content);
 
-                	int selectionStart = contentText.getSelectionStart();
+                	selectionStart = contentText.getSelectionStart();
                 	
                 	styleStart = selectionStart;
                 	
-                	int selectionEnd = contentText.getSelectionEnd();
+                	selectionEnd = contentText.getSelectionEnd();
                 	
                 	if (selectionStart > selectionEnd){
                 		int temp = selectionEnd;
@@ -2094,10 +2094,6 @@ public class editPost extends Activity implements LocationListener{
 			if (linkText.equals("CANCEL") != true){
 
 			EditText contentText = (EditText) findViewById(R.id.content);
-
-        	int selectionStart = contentText.getSelectionStart();
-        	
-        	int selectionEnd = contentText.getSelectionEnd();
         	
         	if (selectionStart > selectionEnd){
         		int temp = selectionEnd;
