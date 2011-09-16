@@ -601,7 +601,9 @@ public class moderateCommentsTab extends ListActivity {
 					});
 				}
 				else{
-					thumbs.notifyDataSetChanged();
+					if (thumbs != null) {
+						thumbs.notifyDataSetChanged();
+					}
 				}
 				return true;
 			}
