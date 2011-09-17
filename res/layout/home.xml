@@ -19,15 +19,35 @@
     android:layout_height="wrap_content"
     android:background="@drawable/view_post_navbar_bg"
     android:orientation="vertical"
-    android:paddingTop="12dp"
-    android:paddingLeft="8dp"
-    android:paddingRight="8dp"
-    android:paddingBottom="8dp">
-    <Button
+    android:paddingTop="7dp"
+    android:paddingLeft="4dp"
+    android:paddingRight="4dp"
+    android:paddingBottom="3dp">
+    <RelativeLayout
       android:id="@+id/readerButton"
+      android:clickable="true"
       android:layout_width="fill_parent"
-      android:layout_height="wrap_content"
-      android:text="@string/reader"
-      android:background="@drawable/wp_button" />
+      android:layout_height="64dp"
+      android:background="@drawable/wp_button_small">
+      <TextView
+        android:layout_centerHorizontal="true"
+        android:id="@+id/readerButtonText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textStyle="bold"
+        android:text="@string/reader"
+        android:textSize="22dp"
+        android:textColor="#444444"
+        android:paddingLeft="13dp"
+        android:layout_marginTop="6dp"
+         />
+      <ImageView
+        android:layout_toLeftOf="@id/readerButtonText"
+        android:layout_width="32dp"
+        android:layout_height="31dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/reader_icon"
+        android:layout_marginTop="7dp" />
+    </RelativeLayout>
   </LinearLayout>
 </LinearLayout>

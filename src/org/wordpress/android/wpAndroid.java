@@ -44,6 +44,7 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.RelativeLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -122,7 +123,7 @@ public class wpAndroid extends ListActivity {
 		accounts = settingsDB.getAccounts(this);
 
 		final int readerBlogID = settingsDB.getWPCOMBlogID(this);
-		Button readerButton = (Button) findViewById(R.id.readerButton);
+		RelativeLayout readerButton = (RelativeLayout) findViewById(R.id.readerButton);
 		if (readerBlogID >= 0) {
 		    readerButton.setOnClickListener(new Button.OnClickListener() {
                 public void onClick(View v) {
