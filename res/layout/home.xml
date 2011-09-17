@@ -39,7 +39,7 @@
         android:textSize="22dp"
         android:textColor="#444444"
         android:paddingLeft="13dp"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="5dp"
          />
       <ImageView
         android:layout_toLeftOf="@id/readerButtonText"
