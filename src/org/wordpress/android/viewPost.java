@@ -111,7 +111,7 @@ public class viewPost extends Activity {
 			menu.add(0, 1, 0, getResources().getText(R.string.view_in_browser));
 			menuItem = menu.findItem(1);
 			menuItem.setIcon(R.drawable.ic_menu_view);
-			
+
 			menu.add(0, 2, 0, getResources().getText(R.string.refresh));
 			menuItem = menu.findItem(2);
 			menuItem.setIcon(R.drawable.browser_reload);
@@ -399,11 +399,16 @@ public class viewPost extends Activity {
 	public boolean onKeyDown(int i, KeyEvent event) {
 
 		if (i == KeyEvent.KEYCODE_BACK) {
-			if (wv.canGoBack()
-					&& !wv.getUrl()
-							.equals("http://en.wordpress.com/reader/mobile/?preload=false")) {
-				wv.goBack();
-			} else {
+			if (loadReader) {
+				if (wv.canGoBack()
+						&& !wv.getUrl()
+								.equals("http://en.wordpress.com/reader/mobile/?preload=false")) {
+					wv.goBack();
+				} else {
+					finish();
+				}
+			}
+			else {
 				finish();
 			}
 		}
