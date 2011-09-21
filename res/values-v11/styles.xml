@@ -59,10 +59,6 @@
     </style>
     
     <style name="WordPress" parent="@android:Theme.Holo.Light">
-    	<item name="android:textViewStyle">@style/WordPressTextAppearance</item> 
-    	<item name="android:windowTitleStyle">@style/WordPressTitleAppearance</item>
-    	<item name="android:buttonStyle">@style/WordPressButtonAppearance</item> 
-	    <item name="android:windowTitleBackgroundStyle">@style/WindowTitleBackground</item>
 	</style>	
     
     <style name="WordPressTextAppearance" parent="@android:style/TextAppearance">
